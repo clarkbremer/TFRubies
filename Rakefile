@@ -1,16 +1,16 @@
-require './version.rb'
+base_name = File.dirname(__FILE__).split("/").last
+require "./#{base_name}/version.rb"
+
 task :default => "zipit"
   
-#base = "CB_TimberFraming"
-base = File.dirname(__FILE__).split("/").last
-puts "Base: #{base}"
-version = CbPluginInfo.const_get("#{base}_VERSION")
+puts "Base Name: #{base_name}"
+version = CbPluginInfo.const_get("#{base_name}_VERSION")
 puts "version: #{version}"
 
 desc "Create RBZ file"
 task :zipit do
   puts "Creating RBZ file"
-  system "7za a -r -tzip #{base} #{base} #{base}.rb"
-  system "move /y #{base}.zip #{base}_#{version}.rbz"
+  system "7za a -r -tzip #{base_name} #{base_name} #{base_name}.rb"
+  system "move /y #{base_name}.zip #{base_name}_#{version}.rbz"
   puts "RBZ file created"
 end

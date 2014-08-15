@@ -107,6 +107,7 @@ require 'sketchup.rb'
 require 'CB_TimberFraming/tf_peg_tool.rb'
 require 'CB_TimberFraming/tf_stretch_tool.rb'
 require 'CB_TimberFraming/assign_dod_tool.rb'
+require "CB_TimberFraming/version.rb"
 
 module CB_TF
 
@@ -2049,7 +2050,9 @@ end
 
 # Report the version
 def CB_TF.tf_version
-  UI.messagebox("TF Extensions Version 2.4.3 - 2/17/2014 - Copyright (c) Clark Bremer.")
+	vv = CbPluginInfo::CB_TimberFraming_VERSION
+	dd = CbPluginInfo::CB_TimberFraming_DATE
+  UI.messagebox("TF Extensions Version #{vv} - #{dd} - Copyright (c) Clark Bremer.")
 end
 
 
