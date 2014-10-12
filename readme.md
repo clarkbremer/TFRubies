@@ -1,12 +1,22 @@
- Cut and paste into ruby console for debugging:
- load "C:/Users/Clark/Documents/TimberFraming/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
- To Do:
-    - Write my own version to "cut face" so we can cut multiple faces.  Need to mark the "cutting face"?
-    - Bug: if timber name has illegal characters (like forward slash), save shop drawings fails.
-    - Hide pegettes before shop drawings and timebr lists
-    - For finding extreme faces for ref faces, break ties with face size (as done with dir lables)
-    - make ALL shop drawings
-    - move this file to github readme?
+# TF Rubies #
+## Sketchup Extensions for Timber Framers ##
+
+*If you just want to install the extensions, you're in the wrong place.*  Choose `window | extension warehouse` from the Sketchup menu.  Search the warehouse for **Timber Framing Extensions**, and install like any other plugin.  This is just the location to store and share the source code.
+
+---
+I'd happily accept help from anyone who wants to contribute some code to this project.  Below is a list of features I'd like to add, but feel free to come up with your own.
+
+## To Do: ##
+* Write our own version of "cut face" so we can cut multiple faces.  
+	- Need to mark the "cutting face" on joint components,
+* Bug: if timber name has illegal characters (like forward slash), save shop drawings fails.  
+	- Need to scrub the name first.
+* Hide cosmetic pegs before shop drawings and timber lists
+* For finding extreme faces for ref faces, break ties with face size (as we already do with direction labels)
+* Feature to make ALL shop drawings all at once.
+
+## Revision History ##
+
  Version 2.4.4 X/X/2014
    - Add Rakefile
  Version 2.4.3 1/1/2014
@@ -86,3 +96,7 @@ Version 1.7 9/14/2007
  - Fixed bug in directional labels for timbers with no faces (splines?)
  Version 1.6 8/31/2007
  - Fixed bug with dimensions of purlins and braces.  Purlins needed to be rolled plumb and level, braces needed to ignore CPs
+
+
+ On windows, cut and paste into ruby console for debugging:
+ load "C:/Users/Clark/Documents/TimberFraming/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
