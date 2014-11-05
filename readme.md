@@ -17,8 +17,10 @@ I'd happily accept help from anyone who wants to contribute some code to this pr
 
 ## Revision History ##
 
- Version 2.4.4 X/X/2014
+ Version 2.4.4 11/4/2014
    - Add Rakefile
+   - Updates for SU2015
+   - Refactor into smaller files
  Version 2.4.3 1/1/2014
    - First commit to GitHub
    - Update for SU-14
