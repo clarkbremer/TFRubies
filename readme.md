@@ -16,6 +16,8 @@ I'd happily accept help from anyone who wants to contribute some code to this pr
 * Feature to make ALL shop drawings all at once.
 
 ## Revision History ##
+ Version 2.4.5 12/6/2014
+   - Remove all extensions to Sketchup::ComponentInstance class (per SU standards)
 
  Version 2.4.4 11/4/2014
    - Add Rakefile

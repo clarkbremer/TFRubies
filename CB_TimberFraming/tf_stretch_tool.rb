@@ -174,7 +174,7 @@ def onLButtonDown(flags, x, y, view)
 			
  			lp1 = @ip1.position # local position
 			lp1.transform!(@ci.transformation.inverse)
-			le = @ci.tf_longest_edge
+			le = CB_TF.longest_edge(@ci)
 			#puts "longest edge: " << le.start.position.to_s << "  " << le.end.position.to_s
 			lv = Geom::Vector3d.new(le.line[1])	#local vector
 			#puts "local vector: " << lv.to_s

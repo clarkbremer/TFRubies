@@ -40,7 +40,7 @@ module CB_TF
         end
       end
       if not found
-        timber.tf_get_dimensions(min_extra_timber_length, metric, roundup, @tdims)
+        CB_TF.get_dimensions(timber, min_extra_timber_length, metric, roundup, @tdims)
           ct = CountedTimber.new(name, 1, @tdims[0], @tdims[1], @tdims[2], @tdims[3], dod)
         @list.push(ct)
       end

@@ -276,7 +276,7 @@ module CB_TF
     ci = sel
     cd = ci.definition
     z_offset = -12
-    start_vertex = ci.tf_vertex_at_origin
+    start_vertex = vertex_at_origin(ci)
     puts "start_vertex: #{start_vertex.position.inspect}"
     dim_end_points = []
     start_point = Geom::Point3d.new(0,0,0)
@@ -293,7 +293,7 @@ module CB_TF
       puts "Origin of joint in timber coordinates: #{end_point.to_s}"
       end_point.transform!ci.transformation  # origin of joint in timber space
       puts "Origin of joint in global coordinates: #{end_point.to_s}"
-      end_vertex = joint.tf_vertex_at_origin
+      end_vertex = vertex_at_origin(joint)
       #dim_end_points << [end_vertex, end_point]
       dim_end_points << end_point
       puts "end_vertex: #{end_vertex.position.inspect}"
@@ -389,7 +389,7 @@ module CB_TF
       else roll_angle = 90.degrees
     end  
 
-    original.tf_get_dimensions(min_extra_timber_length, metric, roundup, tdims)
+    get_dimensions(original, min_extra_timber_length, metric, roundup, tdims)
     begin
       $SmustardSelectionMemory ? $SmustardSelectionMemory.inactive=true : nil
       # make an array of instances to hold the 4 copies of the original plus joinery
@@ -496,7 +496,7 @@ module CB_TF
                       shop_dwg[0].transformation.inverse * tmortise.transformation) 
             # get rid of the temp
             tmortise.erase!
-            if not mortise.tf_reglue
+            if not reglue(mortise)
               print("reglue failed.\n")
             end
             project_pegs(mortise, shop_dwg[0])
@@ -507,7 +507,7 @@ module CB_TF
       
       # add Direction labels if so configured
       s = Sketchup.read_default("TF", "dir_labels", 1).to_i
-      shop_dwg[0].tf_lay_down_on_red(s==1)
+      lay_down_on_red(shop_dwg[0], s==1)
         # offset it away from the rest of the model, and place it on the ground plane
       bb = shop_dwg[0].bounds
       tv = Geom::Vector3d.new(0, MODEL_OFFSET, (-1)*bb.corner(0).z)

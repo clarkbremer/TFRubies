@@ -1,9 +1,9 @@
-# Extending SU base class.  Prepend all method names with tf_ to avoid namespace
-# collisions with other plugins.  TODO:  Move to new source file.
+# All methods in the this file were once extensions to Sketchup::ComponentInstance. 
+# To adhere to Sketchup Plugin Standards, they were all made into module methods that
+# take a component instance as their first parameter.  :-(
 
-class Sketchup::ComponentInstance 
-
-  def tf_add_directional_lables  
+module CB_TF
+  def CB_TF.add_directional_lables(timber)
     northmost = -10000
     southmost = 10000
     eastmost = -10000
@@ -20,14 +20,14 @@ class Sketchup::ComponentInstance
     # find and mark the directional faces
     # break ties with face of larger area
     faces = Array.new
-    self.definition.entities.each do |ent|
+    timber.definition.entities.each do |ent|
       if ent.instance_of? Sketchup::ComponentInstance
         ent.definition.entities.each do |subent|
           if subent.instance_of? Sketchup::Face 
             ctr = subent.bounds.center
             #print("ctr b4  xf:"+ctr.to_s + "\n")
             ctr.transform!ent.transformation
-  #          ctr.transform!self.transformation
+            #ctr.transform!timber.transformation
             #print("ctr aft xf:"+ctr.to_s + "\n")
             ef = CB_TF::ExtremeFace.new(subent, ctr)
             faces.push ef
@@ -35,7 +35,6 @@ class Sketchup::ComponentInstance
         end
       elsif ent.instance_of? Sketchup::Face
         ctr = ent.bounds.center
-  #      ctr.transform!self.transformation
         ef = CB_TF::ExtremeFace.new(ent, ctr)
         faces.push ef
       end
@@ -43,7 +42,7 @@ class Sketchup::ComponentInstance
     faces.each do |ef|
       face = ef.face
       ctr = Geom::Point3d.new(ef.ctr)
-      ctr.transform! self.transformation
+      ctr.transform! timber.transformation
       if (ctr.x-eastmost).abs < 0.0001
         if face.area > east.face.area 
           east = ef
@@ -97,7 +96,6 @@ class Sketchup::ComponentInstance
         lowest = ctr.z
         bottom = ef
       end
-      
     end      
     return if north == nil  ## No Faces?  No Labels!
 
@@ -107,36 +105,36 @@ class Sketchup::ComponentInstance
     ov = north.ctr-south.ctr
     if ov.length != 0
       ov.length=3
-      dl = self.definition.entities.add_text("N", north.ctr, ov)
+      dl = timber.definition.entities.add_text("N", north.ctr, ov)
       dl.layer = dl_layer
       ov.reverse!
-      dl = self.definition.entities.add_text("S", south.ctr, ov)
+      dl = timber.definition.entities.add_text("S", south.ctr, ov)
       dl.layer = dl_layer
     end
     
     ov = east.ctr-west.ctr
     if ov.length != 0
       ov.length=3
-      dl = self.definition.entities.add_text("E", east.ctr, ov)
+      dl = timber.definition.entities.add_text("E", east.ctr, ov)
       dl.layer = dl_layer
       ov.reverse!
-      dl = self.definition.entities.add_text("W", west.ctr, ov)
+      dl = timber.definition.entities.add_text("W", west.ctr, ov)
       dl.layer = dl_layer
     end
 
     ov = top.ctr-bottom.ctr
     if ov.length != 0
       ov.length=3
-      dl = self.definition.entities.add_text("T", top.ctr, ov)
+      dl = timber.definition.entities.add_text("T", top.ctr, ov)
       dl.layer = dl_layer
       ov.reverse!
-      dl = self.definition.entities.add_text("B", bottom.ctr, ov)
+      dl = timber.definition.entities.add_text("B", bottom.ctr, ov)
       dl.layer = dl_layer
     end
   end  # add directional labels
 
-  def tf_largest_face
-    cd = definition
+  def CB_TF.largest_face(timber)
+    cd = timber.definition
     largest = nil
     cd.entities.each do |e|
       next if not e.instance_of? Sketchup::Face
@@ -147,8 +145,8 @@ class Sketchup::ComponentInstance
     return largest
   end
 
-  def tf_longest_edge
-    cd = definition
+  def CB_TF.longest_edge(timber)
+    cd = timber.definition
     longest = nil
     cd.entities.each do |e|
       next if not e.instance_of? Sketchup::Edge
@@ -159,20 +157,20 @@ class Sketchup::ComponentInstance
     return longest
   end
 
-  def tf_rotate_around_axis(rot_axis, target_axis)
+  def CB_TF.rotate_around_axis(timber, rot_axis, target_axis)
     # rotate around rot_axis so that we lie in the plane of rot_axis and target_axis
     #print("rot_axis: "+rot_axis.to_s+"\n")
     #print("target_axis: "+target_axis.to_s+"\n")
 
     rp = Geom::Point3d.new(0,0,0)     #rotation point
        # translate this point to global coordinates    
-    rp.transform!(self.transformation)        
+    rp.transform!(timber.transformation)        
     
-    return nil if not (axis = self.tf_longest_edge)  #CI has no edges?
+    return nil if not (axis = longest_edge(timber))  #CI has no edges?
     lev = Geom::Vector3d.new(axis.line[1])  # longest edge vector
     # print("lev b4: " + lev.to_s + "\n")
     # translate this to global coordinates
-    lev.transform!(self.transformation)
+    lev.transform!(timber.transformation)
     #print("lev xfromed: " + lev.to_s + "\n")
     test_lev = Geom::Vector3d.new(lev)
     
@@ -219,17 +217,17 @@ class Sketchup::ComponentInstance
     
     rt = Geom::Transformation.rotation(rp, rot_axis, rot_ang) 
     #print("rotation: " + rot_ang.radians.to_s + "\n")
-    self.transform!(rt)
+    timber.transform!(rt)
   end
 
-  def tf_roll_plumb
+  def CB_TF.roll_plumb(timber)
     
     blue = Geom::Vector3d.new(0,0,1) 
 
     # is the largest face neither plumb nor level?
-    return nil if not (lf = self.tf_largest_face) #CI has no faces?
+    return nil if not (lf = largest_face(timber)) #CI has no faces?
     lfv = lf.normal
-    lfv.transform!(self.transformation)
+    lfv.transform!(timber.transformation)
     ra = lfv.angle_between(blue)   #rotation angle
     #print("rotation angle: " + ra.radians.to_s + "\n")
 
@@ -250,14 +248,14 @@ class Sketchup::ComponentInstance
       ra -= 360.degrees
     end
     
-    return nil if not (axis = self.tf_longest_edge)  #CI has no edges?
+    return nil if not (axis = longest_edge(timber))  #CI has no edges?
     lev = Geom::Vector3d.new(axis.line[1])  # longest edge vector  
-    lev.transform!(self.transformation)
+    lev.transform!(timber.transformation)
     
     rv = Geom::Vector3d.new(lev) # rotation vector (rotate around lev)
     rp = Geom::Point3d.new(0,0,0)     #rotation point
     # translate this point to global coordinates    
-    rp.transform!(self.transformation)        
+    rp.transform!(timber.transformation)        
     rt = Geom::Transformation.rotation(rp, rv, ra) 
     lfv.transform!(rt)   
     #print("lfv1:" + lfv.to_s + "\n")
@@ -271,10 +269,10 @@ class Sketchup::ComponentInstance
 
     #print("plumb rotation: " + ra.radians.to_s + "\n")
     rt = Geom::Transformation.rotation(rp, rv, ra) 
-    self.transform!(rt)
+    timber.transform!(rt)
   end
 
-  def tf_lay_down_on_red(make_dir_lables = false)
+  def CB_TF.lay_down_on_red(timber, make_dir_lables = false)
     # fix the orientation so that its horizontal parallel with red
     # do this in two steps so that timbers at an angle don't "roll"
     
@@ -283,9 +281,9 @@ class Sketchup::ComponentInstance
     blue = Geom::Vector3d.new(0,0,1) 
     
     # determine  the basic orientation
-    return nil if not (axis = self.tf_longest_edge)  #CI has no edges?
+    return nil if not (axis = longest_edge(timber))  #CI has no edges?
     lev = Geom::Vector3d.new(axis.line[1])  # longest edge vector
-    lev.transform!(self.transformation)
+    lev.transform!(timber.transformation)
     
     # determine it's got a 'rafter' configuration, and if so, rotate "down" forst, then apply direction labels
     # z == 0 means horizontal (girt)  z==1 means vertical (post)  Anything else is "rafter-like"
@@ -294,49 +292,48 @@ class Sketchup::ComponentInstance
       if lev.x.abs < 0.00001
         # rafter in the green-blue plane  
         #print("green-blue rafter\n")
-        tf_rotate_around_axis(red, green)
+        rotate_around_axis(timber, red, green)
         #UI.messagebox("pause after red rotatation toward green")
         if make_dir_lables then
-          tf_add_directional_lables
+          add_directional_lables(timber)
         end      
-        tf_rotate_around_axis(blue, red)
+        rotate_around_axis(timber, blue, red)
         #UI.messagebox("pause after blue rotatation toward red")
-        tf_roll_plumb 
+        roll_plumb(timber)
       elsif lev.y.abs < 0.00001 
         #rafter in the red-blue plane
         #print("red-blue rafter\n")
-        tf_rotate_around_axis(green, red)
+        rotate_around_axis(timber, green, red)
         if make_dir_lables then
-          tf_add_directional_lables
+          add_directional_lables(timber)
         end      
-        tf_rotate_around_axis(blue, red)  # redundnat?
-        tf_roll_plumb 
+        rotate_around_axis(timber, blue, red)  # redundnat?
+        roll_plumb(timber)
       else
         # valley rafter? don't bother with direction labels.
         #print("valley rafter\n")
-        tf_rotate_around_axis(green, red)
-        tf_rotate_around_axis(blue, red)  
-        tf_roll_plumb 
+        rotate_around_axis(timber, green, red)
+        rotate_around_axis(timber, blue, red)  
+        roll_plumb(timber)
       end
     else # not a rafter
       #print("not a rafter\n")
-      tf_roll_plumb 
+      roll_plumb(timber)
       if make_dir_lables then
-        tf_add_directional_lables
+        add_directional_lables(timber)
       end      
-      tf_rotate_around_axis(green, red)
-      tf_rotate_around_axis(blue, red)
+      rotate_around_axis(timber, green, red)
+      rotate_around_axis(timber, blue, red)
       #UI.messagebox("pause3")
     end
   end  # lay down on red
 
-
-  def tf_get_dimensions(min_len, metric, roundup, tdims)
+  def CB_TF.get_dimensions(timber, min_len, metric, roundup, tdims)
     model = Sketchup.active_model
     grp = model.entities.add_group
-    clone = grp.entities.add_instance(self.definition, self.transformation) 
+    clone = grp.entities.add_instance(timber.definition, timber.transformation) 
     clone.make_unique
-    clone.tf_lay_down_on_red
+    lay_down_on_red(clone)
     subcomp = Array.new
     clone.definition.entities.each do |s|
       if s.instance_of? Sketchup::ComponentInstance then 
@@ -387,17 +384,17 @@ class Sketchup::ComponentInstance
     end
   end
 
-  def tf_reglue
+  def CB_TF.reglue(joint)
     co = Geom::Point3d.new(0,0,0)  #comp origin
     cv = Geom::Vector3d.new(0,0,1) #comp vector (set to Z axis)
-    co.transform!(self.transformation)  #switch to our parent's coordinates
-    cv.transform!(self.transformation)
-    parent.entities.each do |face|
+    co.transform!(joint.transformation)  #switch to our parent's coordinates
+    cv.transform!(joint.transformation)
+    joint.parent.entities.each do |face|
       next if not face.instance_of? Sketchup::Face
       if face.classify_point(co) >= 1 and face.classify_point(co) <= 4 and face.normal.parallel?(cv) then
   #    if co.on_face?(face) and face.normal.parallel?(cv)
         begin
-          status = self.glued_to=face
+          status = joint.glued_to=face
         rescue
   #        UI.messagebox $!.message
         end
@@ -413,8 +410,8 @@ class Sketchup::ComponentInstance
     return nil
   end
 
-  def tf_vertex_at_origin
-    self.definition.entities.each do |e|
+  def CB_TF.vertex_at_origin(ci)
+    ci.definition.entities.each do |e|
       next unless e.instance_of? Sketchup::Edge
         return e.start if e.start.position == [0,0,0] 
         return e.end if e.end.position == [0,0,0] 
@@ -423,4 +420,4 @@ class Sketchup::ComponentInstance
     return nil
   end
 
-end  # component_instance class extensions
+end  # module
