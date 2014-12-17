@@ -15,6 +15,9 @@ require "CB_TimberFraming/timber_list.rb"
 # All our stuff goes in this module to avoid namespace collisions with other plugins
 module CB_TF
   COSMETIC_PEG_LAYER_NAME = "Pegs for Presentation"
+  JAD = "TF_Joinery"
+  MODEL_OFFSET = 0
+  SIDE_SPACING = 30
 
   # helper method to make sure that one and only one component is selected
   def CB_TF.selected_component
@@ -391,7 +394,6 @@ module CB_TF
 
     get_dimensions(original, min_extra_timber_length, metric, roundup, tdims)
     begin
-      $SmustardSelectionMemory ? $SmustardSelectionMemory.inactive=true : nil
       # make an array of instances to hold the 4 copies of the original plus joinery
       shop_dwg = Array.new
       # make a copy of the original
@@ -656,7 +658,6 @@ module CB_TF
         model.rendering_options["ModelTransparency"]= save_xray
         model.rendering_options["DrawHorizon"]= save_sky
         model.definitions.purge_unused
-      	$SmustardSelectionMemory ? $SmustardSelectionMemory.inactive=false : nil
       end  
     
     end  
@@ -890,8 +891,8 @@ module CB_TF
   
   # Report the version
   def self.tf_version
-    vv = CbPluginInfo::CB_TimberFraming_VERSION
-    dd = CbPluginInfo::CB_TimberFraming_DATE
+    vv = PluginInfo::CB_TimberFraming_VERSION
+    dd = PluginInfo::CB_TimberFraming_DATE
     UI.messagebox("TF Extensions Version #{vv} - #{dd} - Copyright (c) Clark Bremer.")
   end
 
@@ -958,9 +959,6 @@ end # module CB_TF
 
 # main program - runs when the script gets loaded
 unless file_loaded?("tf.rb") 
-  JAD = "TF_Joinery"
-  MODEL_OFFSET = 0
-  SIDE_SPACING = 30
 
   UI.add_context_menu_handler do |menu|
     if menu == nil 
@@ -982,7 +980,7 @@ unless file_loaded?("tf.rb")
       # menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
       dod = 0.0
       if sel.parent == Sketchup.active_model
-        dod = sel.definition.get_attribute(JAD, "DoD", 0.0)
+        dod = sel.definition.get_attribute(CB_TF::JAD, "DoD", 0.0)
       end
       set_dod_menu_item = menu.add_item("TF Set DoD (currently " + dod.to_s + ")") {CB_TF.set_dod(sel)}
       menu.set_validation_proc(set_dod_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}  # same rules as shop dwg
