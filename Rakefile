@@ -3,7 +3,7 @@ require "./#{base_name}/version.rb"
 
 task :default => "zipit"
 
-version = CB_TF::PluginInfo.const_get("#{base_name}_VERSION")
+version = CB_PluginInfo.const_get("#{base_name}_VERSION")
 
 if RUBY_PLATFORM.include? "darwin"
   ZIP = "zip -r"

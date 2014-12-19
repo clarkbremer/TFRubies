@@ -891,8 +891,8 @@ module CB_TF
   
   # Report the version
   def self.tf_version
-    vv = PluginInfo::CB_TimberFraming_VERSION
-    dd = PluginInfo::CB_TimberFraming_DATE
+    vv = CB_PluginInfo::CB_TimberFraming_VERSION
+    dd = CB_PluginInfo::CB_TimberFraming_DATE
     UI.messagebox("TF Extensions Version #{vv} - #{dd} - Copyright (c) Clark Bremer.")
   end
 
