@@ -97,9 +97,9 @@ module CB_TF
   end
 
 
-  def CB_TF.make_timber_list
+  def CB_TF.make_timber_list(with_layers=false)
     begin
-        model = Sketchup.active_model
+      model = Sketchup.active_model
       s = Sketchup.read_default("TF", "excel", 0).to_i
       if s == 1 
         then excel_mode = true
@@ -243,6 +243,26 @@ module CB_TF
       print("condensing\n")
       cl.condense!
       
+      if with_layers 
+        layer_lists = {}
+        model.active_entities.each do |timber|
+          next if not timber.instance_of? Sketchup::ComponentInstance 
+          next if timber.hidden?
+          next if not timber.layer.visible?
+          ll = timber.layer
+          unless layer_lists.has_key? ll
+            layer_lists[ll]=TimberList.new
+          end
+          layer_lists[ll].add(timber, min_extra_timber_length, metric, roundup)   
+          print("Added timber to layer #{ll.name}\n");
+        end
+        
+        print("condensing\n")
+        layer_lists.each_value do |list|
+          list.condense!       
+        end
+      end
+
       print("exporting\n")
       if excel_mode
         worksheet.cells(row,1).value = "Named Timbers"
@@ -476,6 +496,89 @@ module CB_TF
         worksheet.cells(row,17).NumberFormat = "0.0;[red]0.0"
         # end tally section
         
+        if with_layers
+          worksheet = workbook.Worksheets(3) #page 3
+          worksheet.name = "Tally by Layer"
+          worksheet.columns("a").columnwidth = 10    # blank
+          worksheet.columns("b").columnwidth = 5    # W
+          worksheet.columns("c").columnwidth = 5    # D
+          worksheet.columns("d").columnwidth = 5    # Qty
+          worksheet.columns("e").columnwidth = 7    # L (ft)
+          if metric
+            worksheet.columns("e").NumberFormat = "0.0"
+          end
+          worksheet.columns("f").columnwidth = 7    # Blank
+          worksheet.columns("g").columnwidth = 10    # BF
+          if metric
+            worksheet.columns("g").NumberFormat = "0.000"
+          else
+            worksheet.columns("g").NumberFormat = "0.00"
+          end
+
+          row=1
+          worksheet.cells(row,1).value = company_name
+          worksheet.cells(row,1).font.italic = true
+          worksheet.cells(row,1).font.size = 14
+          row+=1      
+          worksheet.cells(row,1).value = "Timber Tally by Layer"
+          worksheet.cells(row,1).font.bold = true
+          worksheet.cells(row,1).font.size = 14
+          row+=2
+          worksheet.cells(row,1).value = "Project: "
+          worksheet.cells(row,2).value = project
+          worksheet.cells(row,2).font.bold = true
+          row+=1
+          worksheet.cells(row,1).value = ts
+          row+=2
+          worksheet.cells(row,2).value = "W"
+          worksheet.cells(row,3).value = "D"
+          worksheet.cells(row,4).value = "Qty"
+          if metric
+            worksheet.cells(row,5).value = "L(m)"
+            worksheet.cells(row,7).value = "V(m3)"
+          else 
+            worksheet.cells(row,5).value = "L(ft)"
+            worksheet.cells(row,7).value = "BF"
+          end  
+          
+          worksheet.rows(row).font.bold = true
+          for col in 2..7
+            worksheet.cells(row, col).HorizontalAlignment = ExcelConst::XlHAlignRight
+            worksheet.cells(row, col).font.size = 14
+          end            
+          row+=1
+          layer_lists.each_pair do |layer, list|
+            worksheet.cells(row,1).value = layer.name
+            worksheet.cells(row,1).font.size = 14
+            row+=1
+            top = row
+            list.each do |ct|
+              worksheet.cells(row,2).value = ct.w    #B  
+              worksheet.cells(row,3).value = ct.d    #C  
+              worksheet.cells(row,4).value = ct.count  #D
+              if metric
+                worksheet.cells(row,5).value = ct.ft/100  #E
+              else
+                worksheet.cells(row,5).value = ct.ft
+              end
+
+              if metric
+                worksheet.cells(row,7).formula = "=(B#{row} * C#{row} * D#{row} * E#{row})/10000" #G
+              else
+                worksheet.cells(row,7).formula = "=(B#{row} * C#{row} * D#{row} * E#{row})/12" #G
+              end  
+              row+=1
+            end
+            unless top == row
+              worksheet.cells(row,1).value = "Total"
+              worksheet.cells(row,4).formula = "=sum(D#{top}:D#{row-1})"
+              worksheet.cells(row,7).formula = "=sum(G#{top}:G#{row-1})"
+              worksheet.rows(row).font.italic = true
+            end
+            row+=2
+          end  
+        end # with_layers
+
         begin
           workbook.saveas(tl_file_name)
         rescue
@@ -535,8 +638,29 @@ module CB_TF
             tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
           end  
         end
+        if with_layers
+          tl_file << "\n" << "=== Tally by Layer:\n"
+          if metric
+            then tl_file << "W\tD\tQty\tL(m)\tV(m3)\n"
+            else tl_file << "W\tD\tQty\tL(ft)\tBF\n"
+          end
+          layer_lists.each_pair do |layer, list|
+            tl_file << "\n" << "  == Layer #{layer.name} ==\n"
+            list.each do |ct|
+              if metric 
+                tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft/100 << "\t" << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
+              else  
+                bf = (ct.count * ct.w * ct.d * ct.ft)/12
+                bf = ((bf*10).round)/10.0
+                tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
+              end  
+
+            end
+          end
+        end
+
         tl_file.close
-      end  
+      end  # csv mode
       print("timber list saved\n")
       begin    
         rescue

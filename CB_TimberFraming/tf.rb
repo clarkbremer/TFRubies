@@ -2,7 +2,7 @@
 ##  Ruby extensions to Sketchup for Timber Framers
 ##  Copyright (c) 2008 - 2014 Clark Bremer
 ##  clarkbremer@gmail.com
-##  
+##
 
 require 'sketchup.rb'
 require 'CB_TimberFraming/tf_peg_tool.rb'
@@ -23,7 +23,7 @@ module CB_TF
   def CB_TF.selected_component
       mm = Sketchup.active_model
       ss = mm.selection
-      return nil if ss.count != 1 
+      return nil if ss.count != 1
       cc = ss[0]
       return nil if not cc.instance_of? Sketchup::ComponentInstance
       cc
@@ -34,7 +34,7 @@ module CB_TF
       mm = Sketchup.active_model
       vv = mm.active_view
       ss = mm.selection
-      return nil if ss.count != 1 
+      return nil if ss.count != 1
       ff = ss[0]
       return nil if not ff.instance_of? Sketchup::Face
       ff
@@ -50,16 +50,16 @@ module CB_TF
 
   def CB_TF.print_bounds(c)
     print("Comp Bounds:  w:"+c.bounds.width.to_s+"\t d:"+c.bounds.depth.to_s+"\t h:"+c.bounds.height.to_s+"\n")
-    for i in 0..7 
+    for i in 0..7
       print "\t" + c.bounds.corner(i).to_s + "\n"
     end
   end
 
   # returns peg center projected onto timber face.  Result is in timber space
-  def CB_TF.get_peg_center(mortise, timber, peg)  
+  def CB_TF.get_peg_center(mortise, timber, peg)
     model = Sketchup.active_model
     pc = Geom::Point3d.new(peg.bounds.center)  #peg center
-    pv = Geom::Vector3d.new(peg.normal)      #peg vector 
+    pv = Geom::Vector3d.new(peg.normal)      #peg vector
   #  print("pc1:" + pc.to_s + "\n")
   #  print("pv1:" + pv.to_s + "\n")
     pc.transform!(mortise.transformation)  #transform from joint space to timber space
@@ -80,23 +80,23 @@ module CB_TF
     else
       printf("project_pegs: raytest failed\n")
       tpc = nil
-    end  
-    
-    # if the peg face was reversed, then we would project back through to the other face of the mortise, 
+    end
+
+    # if the peg face was reversed, then we would project back through to the other face of the mortise,
     # rather than the outside face of the timebr.  In that case, we want to shoot in the other direction.
-    
+
     # check all the faces of the mortise to see if the peg is on one of them
     on_mortise_face = false
     if tpc then  # don't bother if we hit empty space
       mortise.definition.entities.each do |face|
         next if not face.instance_of? Sketchup::Face
-        
+
         if face.classify_point(mpc) >= 1 and face.classify_point(mpc) <= 4 then
           on_mortise_face = true
         end
       end
     end
-    
+
     # if the peg is on a mortise face, try shooting in the other direction
     if on_mortise_face then
       #print("peg on face of mortise - trying other side\n")
@@ -110,7 +110,7 @@ module CB_TF
       else
         #printf("project_pegs: raytest failed\n")
         tpc = nil
-      end  
+      end
     end
 
     return tpc
@@ -118,9 +118,9 @@ module CB_TF
 
   # Project a line the center of a peg on a mortise outward until it contacts
   # a face. Draw a cpoint at that point.
-  def CB_TF.project_pegs(mortise, timber)   
+  def CB_TF.project_pegs(mortise, timber)
     model = Sketchup.active_model
-    
+
     mortise.definition.entities.each do |peg|
       next if not peg.instance_of? Sketchup::Face
       next if not peg.get_attribute( JAD, "peg", false)
@@ -132,9 +132,9 @@ module CB_TF
     end
   end
 
-  # Note that these are just cosmetic pegs for presentation purposes.  
+  # Note that these are just cosmetic pegs for presentation purposes.
   # This method has nothing to do with the create_pegs or project_pegs method used in shop drawings.
-  def CB_TF.show_pegs  
+  def CB_TF.show_pegs
     model = Sketchup.active_model
     model.start_operation("Add Pegs", true)
       peg_layer = Sketchup.active_model.layers.add COSMETIC_PEG_LAYER_NAME
@@ -148,13 +148,13 @@ module CB_TF
       if f = pd.entities.add_face(ents) then
         f.layer = "Layer0"
         f.pushpull(-1)
-      end  
+      end
       model.active_entities.each do |timber|
-        next if not timber.instance_of? Sketchup::ComponentInstance 
+        next if not timber.instance_of? Sketchup::ComponentInstance
         next if timber.hidden?
         next if not timber.layer.visible?
         timber.definition.entities.each do |tenon|
-          next if not tenon.instance_of? Sketchup::ComponentInstance 
+          next if not tenon.instance_of? Sketchup::ComponentInstance
           if tenon.definition.get_attribute( JAD, "tenon", false) then
             tenon.definition.entities.each do |peg_face|
               next if not peg_face.instance_of? Sketchup::Face
@@ -169,18 +169,18 @@ module CB_TF
                 pv.transform!(timber.transformation)
                 pt = Geom::Transformation.new(peg_ctr, pv)
                 pi = model.active_entities.add_instance(pd, pt)
-                
+
                 pi.layer = peg_layer
-              end  
+              end
             end
-          end    
+          end
         end
       end
       print(peg_count.to_s + " Pegs drawn.\n")
-    model.commit_operation  
+    model.commit_operation
   end
 
-  # Place ref face triangle marks on shop drawings 
+  # Place ref face triangle marks on shop drawings
   def CB_TF.mark_reference_faces(shop_dwg)
     for i in 0..3
       sd = shop_dwg[i]
@@ -192,7 +192,7 @@ module CB_TF
       bottom = nil
       front = nil
       back = nil
-      
+
       model = Sketchup.active_model
       sd.definition.entities.each do |face|
         next if not face.instance_of? Sketchup::Face
@@ -267,15 +267,15 @@ module CB_TF
 
 
   ##############################################
-  ##  
+  ##
   ##  *** EXPERIMENTAL ***
   ##
   ##  Add auto-dimensions to shop drawings
-  ##  
+  ##
   def CB_TF.auto_dimensions(sel)
     puts "adding dimensions to shop drawings"
       model = Sketchup.active_model
-    model.start_operation("add dimensions to shop drawings", true) 
+    model.start_operation("add dimensions to shop drawings", true)
     ci = sel
     cd = ci.definition
     z_offset = -12
@@ -288,8 +288,8 @@ module CB_TF
     dim_start = start_point
     puts "Origin of timber in global coordinates: #{dim_start.to_s}"
     cd.entities.each do |joint|
-        next unless joint.instance_of? Sketchup::ComponentInstance 
-      next unless joint.definition.get_attribute( JAD, "tenon", false)    
+        next unless joint.instance_of? Sketchup::ComponentInstance
+      next unless joint.definition.get_attribute( JAD, "tenon", false)
       puts "Joint found: #{joint.definition.name}"
       end_point = Geom::Point3d.new(0,0,0)
       end_point.transform!joint.transformation  # origin of joint in timber space
@@ -309,7 +309,7 @@ module CB_TF
     dim_end_points.each do |dim_end|
         dim = model.entities.add_dimension_linear(dim_start, dim_end, [0,0,z_offset])
         z_offset -= 2
-      end  
+      end
 
     model.commit_operation
     puts "done adding dimensions to shop drawings"
@@ -321,8 +321,8 @@ module CB_TF
   ##
   ##  Copies tenon joinery from other timbers into this one as mortises.
   ##
-  ##  Make 4 copies of the selected timber, each rotated 90 deg 
-  ##  from each other to show all 4 faces, in xray mode, parralel perspective.  
+  ##  Make 4 copies of the selected timber, each rotated 90 deg
+  ##  from each other to show all 4 faces, in xray mode, parralel perspective.
   ##  Must have one and only one component selected.
   ##
   ##  load "C:/Users/Clark/Documents/TimberFraming/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
@@ -330,7 +330,7 @@ module CB_TF
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
     # puts "Sketchup Version: #{su_ver}"
-    tm = Time.now  
+    tm = Time.now
     if not original.instance_of? Sketchup::ComponentInstance
       UI.messagebox "TF Rubies: Must have one and only one timber selected"
       return
@@ -347,7 +347,7 @@ module CB_TF
   		  return
   		end
   	end
-    model.start_operation("make shop drawings", true) 
+    model.start_operation("make shop drawings", true)
     view = model.active_view
 
     # so we can put it all back the way we found it.
@@ -362,50 +362,50 @@ module CB_TF
 
     sel = model.selection
 
-  	# crashes second time through      
+  	# crashes second time through
     #   pgs = Array.new
     #   model.pages.each {|pg| pgs.push pg}
     #   pgs.each {|pg| model.pages.erase pg}
-      
+
     tdims = Array.new
     min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
     s = Sketchup.read_default("TF", "xray", 1).to_i
     if s==1 then
-      xray_mode=true 
-    else 
+      xray_mode=true
+    else
       xray_mode=false
-    end  
+    end
 
     s = Sketchup.read_default("TF", "metric", 0).to_i
-    if s == 1 
+    if s == 1
       then metric = true
       else metric = false
-    end  
+    end
     s = Sketchup.read_default("TF", "roundup", 0).to_i
-    if s == 1 
+    if s == 1
       then roundup = true
       else roundup = false
-    end  
+    end
     s = Sketchup.read_default("TF", "roll", 0).to_i
-    if s == 1 
+    if s == 1
       then roll_angle = -90.degrees
       else roll_angle = 90.degrees
-    end  
+    end
 
     get_dimensions(original, min_extra_timber_length, metric, roundup, tdims)
     begin
       # make an array of instances to hold the 4 copies of the original plus joinery
       shop_dwg = Array.new
       # make a copy of the original
-        shop_dwg[0] = model.entities.add_instance(original.definition, original.transformation)   
+        shop_dwg[0] = model.entities.add_instance(original.definition, original.transformation)
       shop_dwg[0].make_unique  # don't mess up the original!
-      
-      
+
+
       # On any of our own tenons. do these tasks
       shop_dwg[0].definition.entities.each do |tenon|
         # find the tenons
-        next if not tenon.instance_of? Sketchup::ComponentInstance 
-        
+        next if not tenon.instance_of? Sketchup::ComponentInstance
+
         # put peg marks on our own tenons
         next if not tenon.definition.get_attribute( JAD, "tenon", false)
         tenon.definition.entities.each do |peg|
@@ -415,7 +415,7 @@ module CB_TF
           pc = Geom::Point3d.new(peg.bounds.center)  #peg center
           tenon.definition.entities.add_cpoint pc
         end
-        
+
         # hide edges at the timber/joint interface
         lv0 = Geom::Point3d.new(0,0,0)  # local vertices
         lv1 = Geom::Point3d.new(0,0,0)
@@ -428,8 +428,8 @@ module CB_TF
           if (tv0.z == 0) and (tv1.z == 0) then
             #print("found a tenon edge to hide - verts:", tv0.to_s, tv1.to_s, "\n")
             tedge.hidden = true
-            v0.transform!tenon.transformation 
-            v1.transform!tenon.transformation 
+            v0.transform!tenon.transformation
+            v1.transform!tenon.transformation
             #print("in local space:", v0.to_s, v1.to_s, "\n")
             # do any of our own edges match up to this one?
             shop_dwg[0].definition.entities.each do |ledge|  # local edge
@@ -445,11 +445,11 @@ module CB_TF
           end
         end
       end
-      
-      # now collect and duplicate all the joinery from other components that protrudes into our space 
+
+      # now collect and duplicate all the joinery from other components that protrudes into our space
       global_to = Geom::Point3d.new(0,0,0)    # global tenon origin
       local_to = Geom::Point3d.new(0,0,0)    # local tenon origin
-      
+
 
       # every comp inst in the top level of the model is a potential timber
       model.active_entities.each do |timber|
@@ -459,7 +459,7 @@ module CB_TF
         # print("Found potential timber:", timber, "\n")
         # every comp inst in the top level of the timber is a potential tenon
         timber.definition.entities.each do |tenon|
-          next if not tenon.instance_of? Sketchup::ComponentInstance 
+          next if not tenon.instance_of? Sketchup::ComponentInstance
           next if not tenon.definition.get_attribute( JAD, "tenon", false)
           # print "found a potential tenon:", tenon, "\n"
           global_to.set!(0,0,0)
@@ -474,7 +474,7 @@ module CB_TF
           next if not original.bounds.contains?(global_to)  # for efficiency, narrow it down with this
           # but that can still produce false positives (e.g. rafters), so preform this face test also:
           # print("tenon within bounds:" + tenon.to_s + "\n")
-           
+
           #original.definition.entities.add_cpoint(local_to)
           # UI.messagebox("pause1")
 
@@ -484,18 +484,18 @@ module CB_TF
             if face.classify_point(local_to) >= 1 and face.classify_point(local_to) <= 4 then
               face_test = true
               break
-            end          
-          end  
-          
+            end
+          end
+
           if face_test
             # found one!  Now create the mortise in the new timber
             # start by creating a temporary copy of the mortise in the correct position, but in global space
             tmortise = model.entities.add_instance(tenon.definition, [0,0,0]) # starts at global origin
-            tmortise.transform!tenon.transformation 
+            tmortise.transform!tenon.transformation
             tmortise.transform!timber.transformation   # those two placed it where it belongs in glabal space
             # now create the actual mortise in the new timber.
-            mortise = shop_dwg[0].definition.entities.add_instance(tmortise.definition, 
-                      shop_dwg[0].transformation.inverse * tmortise.transformation) 
+            mortise = shop_dwg[0].definition.entities.add_instance(tmortise.definition,
+                      shop_dwg[0].transformation.inverse * tmortise.transformation)
             # get rid of the temp
             tmortise.erase!
             if not reglue(mortise)
@@ -506,7 +506,7 @@ module CB_TF
         end
       end
       # print ("joined.\n")
-      
+
       # add Direction labels if so configured
       s = Sketchup.read_default("TF", "dir_labels", 1).to_i
       lay_down_on_red(shop_dwg[0], s==1)
@@ -518,29 +518,29 @@ module CB_TF
 
       # Now make the other sides
       rv = Geom::Vector3d.new(0,0,0)    #rotation vector
-      
-      for i in 1..3 
+
+      for i in 1..3
         ### Dupe It
-        shop_dwg[i] = model.entities.add_instance(shop_dwg[i-1].definition, [0,0,0])    
+        shop_dwg[i] = model.entities.add_instance(shop_dwg[i-1].definition, [0,0,0])
         # apply same transform to new comp.
-        shop_dwg[i].transformation = shop_dwg[i-1].transformation;                 
-          
-        ### Offset it from the previous one  
+        shop_dwg[i].transformation = shop_dwg[i-1].transformation;
+
+        ### Offset it from the previous one
         tv = Geom::Vector3d.new(0, 0, SIDE_SPACING)
         tt = Geom::Transformation.translation(tv)
         shop_dwg[i].transform!(tt)
-            
+
         ### Rotate it 90 degrees around the center of the component, parallel to red
-        rv.set!(1,0,0)   
-          ra = roll_angle                      
-          rt = Geom::Transformation.rotation(shop_dwg[i].bounds.center, rv, ra) 
+        rv.set!(1,0,0)
+          ra = roll_angle
+          rt = Geom::Transformation.rotation(shop_dwg[i].bounds.center, rv, ra)
           shop_dwg[i].transform!(rt)
         shop_dwg[i].make_unique
       end
-    
-      ## find and hide any joints and direction lables on the back side (facing away from the camera)  
+
+      ## find and hide any joints and direction lables on the back side (facing away from the camera)
       if xray_mode
-        for i in 0..3 
+        for i in 0..3
           backmost = -10000
           bf = nil
           shop_dwg[i].definition.entities.each do |face|
@@ -569,15 +569,15 @@ module CB_TF
             jo.transform!joint.transformation
             if (bf.normal == jnv) or (bf.normal == jnv.reverse)
               #print("normals match\n")
-              if bf.classify_point(jo) >= 1 and bf.classify_point(jo) <= 4  
+              if bf.classify_point(jo) >= 1 and bf.classify_point(jo) <= 4
                 #print("joint origin on face\n")
                 joint.hidden = true
               end
             end
-          end  
+          end
         end # for each shop drawing
       end  # if xray mode
-    
+
       camera = Sketchup::Camera.new
       camera.perspective = false
       up = camera.up
@@ -590,11 +590,11 @@ module CB_TF
       view.camera = camera
 
       if xray_mode then
-        model.rendering_options["ModelTransparency"]=true 
-      end  
+        model.rendering_options["ModelTransparency"]=true
+      end
       model.rendering_options["DrawHorizon"]= false
 
-      ts = tm.strftime("Created on: %m/%d/%Y")  
+      ts = tm.strftime("Created on: %m/%d/%Y")
       company_name = Sketchup.read_default("TF", "company_name", "Company Name")
       if original.name == ""
         timber_name = original.definition.name+"  (qty "+ original.definition.count_instances.to_s + ")"
@@ -603,7 +603,7 @@ module CB_TF
         timber_name = original.name
         drawing_name = original.name + ".skp"
       end
-      tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s 
+      tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
       drawing_title = company_name + "\nProject: " + model.title + "\nTimber: " + timber_name + " - " + tsize + "\n" + ts + "\n"
 
       victims = Array.new
@@ -612,20 +612,20 @@ module CB_TF
         victims.push e
       end
       victims.each {|victim| victim.erase! if victim.valid?}
-      
+
       result = model.definitions.purge_unused
       if not result
         print("purge failed\n")
       end
       sel.clear
       shop_dwg.each {|dwg| sel.add(dwg)}
-      view.zoom sel 
-      sel.clear    
+      view.zoom sel
+      sel.clear
       mark_reference_faces(shop_dwg)
       model.add_note(drawing_title, 0.01, 0.02)
-      begin    
+      begin
         sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
-        if sd_file 
+        if sd_file
           while sd_file.index("\\")
             sd_file["\\"]="/"
           end
@@ -638,7 +638,7 @@ module CB_TF
           if not save_status
             UI.messagebox("TF Rubies: Error saving Shop Drawings!")
           end
-        else      
+        else
           UI.messagebox("Shop Drawings NOT saved!")
         end
       rescue
@@ -648,7 +648,7 @@ module CB_TF
         # now put everyting back the way we found it!
         # puts "putting it back"
         model.commit_operation
-        Sketchup.undo      
+        Sketchup.undo
         model = Sketchup.active_model
         view = model.active_view
         cam = view.camera
@@ -658,9 +658,9 @@ module CB_TF
         model.rendering_options["ModelTransparency"]= save_xray
         model.rendering_options["DrawHorizon"]= save_sky
         model.definitions.purge_unused
-      end  
-    
-    end  
+      end
+
+    end
   end  # make shop drawings
 
   # debug method
@@ -675,9 +675,9 @@ module CB_TF
       h = face.bounds.height
       d = face.bounds.depth
       print("w:"+w.to_s + "\th:"+ h.to_s+"\td:"+d.to_s+"\n")
-    end  
+    end
   end
- 
+
   def CB_TF.dod_report
     timber_count = 0
     no_dod_count = 0
@@ -686,27 +686,27 @@ module CB_TF
     no_dod_names = Array.new
     model = Sketchup.active_model
     model.active_entities.each do |timber|
-      next if not timber.instance_of? Sketchup::ComponentInstance 
+      next if not timber.instance_of? Sketchup::ComponentInstance
       next if timber.hidden?
       next if not timber.layer.visible?
       next if timber.layer.name == COSMETIC_PEG_LAYER_NAME
-      timber_count = timber_count + 1    
+      timber_count = timber_count + 1
       dod += timber.definition.get_attribute( JAD, "DoD", 0.0)
       if timber.definition.get_attribute( JAD, "DoD", 0.0) == 0.0 then
         no_dod_count += 1
         no_dod_names.push timber.definition.name
-      end  
-    end  
+      end
+    end
     dod = ((dod * 10000).round)/10000.0
     message = "Total DoD: " + dod.to_s + "\n\n"
-    message += no_dod_count.to_s + "  out of " + timber_count.to_s + " total timbers have no DoD.\n"  
+    message += no_dod_count.to_s + "  out of " + timber_count.to_s + " total timbers have no DoD.\n"
     no_dod_count = 0
-    no_dod_names.each do |name| 
+    no_dod_names.each do |name|
       no_dod_count +=1
       message += name+"\n"
       if no_dod_count > 10
         message += "..."
-        break 
+        break
       end
     end
     UI.messagebox(message)
@@ -731,26 +731,26 @@ module CB_TF
   ##  - Marks a component with an attribute dictionary entry
   ##  - Sets glue to and cutting behaviors if needed
   ##  - Deletes face on surface of mortised face if needed
-  ##  - shades inside faces of joint to indicate mortise depth 
+  ##  - shades inside faces of joint to indicate mortise depth
   ##
   def CB_TF.create_joint
     return nil if not sel=selected_component
     dfn = sel.definition
     if not dfn.behavior.is2d?
-      #print ("was not set to glue - setting it now.\n") 
+      #print ("was not set to glue - setting it now.\n")
       dfn.behavior.is2d=true
     end
-    if not dfn.behavior.cuts_opening?  
-      #print ("was not set to cut - setting it now.\n") 
+    if not dfn.behavior.cuts_opening?
+      #print ("was not set to cut - setting it now.\n")
       dfn.behavior.cuts_opening=true
-    end  
+    end
     dfn.set_attribute(JAD, "tenon", true)
     #print "tenon made:", sel, "\n"
-    
+
     tol = 0.00001
     bfs = Array.new
     dfn.entities.each do |face|
-      next if not face.instance_of? Sketchup::Face 
+      next if not face.instance_of? Sketchup::Face
       p = face.plane
       x = p[0]
       y = p[1]
@@ -760,17 +760,17 @@ module CB_TF
       #if o.abs < tol then print("\t0\n") else print("\t"+ o.to_s+"\n") end
       #if x.abs < tol then print("\t0\n") else print("\t"+ x.to_s+"\n") end
       #if y.abs < tol then print("\t0\n") else print("\t"+ y.to_s+"\n") end
-    
-      if z.abs < tol 
-        #print("\t0\n") 
-      else 
-        # note that Z axis could be either into or out of the mortise.   
+
+      if z.abs < tol
+        #print("\t0\n")
+      else
+        # note that Z axis could be either into or out of the mortise.
         ctr = face.bounds.center
         if (z > 0 and ctr.z > 0) or (z < 0 and ctr.z <0) then
           #print("\tReversing face\n")
-          face.reverse! 
+          face.reverse!
         end
-        #print("\tz:"+ z.to_s+"\tctr.z:"+ctr.z.to_s+" (color me)") 
+        #print("\tz:"+ z.to_s+"\tctr.z:"+ctr.z.to_s+" (color me)")
         h = face.vertices[0].position[2].abs
         g = 160-(h*12).to_i
         if g<0 then g=0 end
@@ -782,9 +782,9 @@ module CB_TF
         #print("Found and removing a base face: " + face.to_s + "\n")
         bfs.push face
       end
-    end   
+    end
     bfs.each {|base| base.erase! if base.valid?}
-    
+
   end
 
   def CB_TF.unroll_joint
@@ -797,7 +797,7 @@ module CB_TF
 
   ##
   ##  Marks a component with an attribute dictionary entry.
-  ##  Not to be confused with #project_pegs (which places cpoint on shop drawings) 
+  ##  Not to be confused with #project_pegs (which places cpoint on shop drawings)
   ##  or #show_pegs, which creates cosmetic pegs.
   ##
   def CB_TF.make_peg
@@ -828,7 +828,7 @@ module CB_TF
     p5 = "Unwrap or Roll shop drawings?"
     p6 = "Minimum extra timber length for timber list:"
     p7 = "Company Name:"
-    
+
     ny = ["N", "Y"]
     em = ["E", "M"]
     tx = ["T", "X"]
@@ -853,46 +853,46 @@ module CB_TF
     defaults = [d0, d1, d2, d3, d4, d5, d6, d7]
     title = "TF Rubies Configuration"
       results = inputbox(prompts, defaults, dds, title)
-    return nil if not results 
-    if results[0] == "Y" then 
+    return nil if not results
+    if results[0] == "Y" then
       Sketchup.write_default("TF", "xray", 1)
-    else 
+    else
         Sketchup.write_default("TF", "xray", 0)
     end
-    if results[1] == "Y" then 
+    if results[1] == "Y" then
       Sketchup.write_default("TF", "dir_labels", 1)
-    else 
+    else
         Sketchup.write_default("TF", "dir_labels", 0)
     end
-    if results[2] == "Y" then 
+    if results[2] == "Y" then
       Sketchup.write_default("TF", "roundup", 1)
-    else 
+    else
         Sketchup.write_default("TF", "roundup", 0)
     end
-    if results[3] == "X" then 
+    if results[3] == "X" then
       Sketchup.write_default("TF", "excel", 1)
-    else 
+    else
         Sketchup.write_default("TF", "excel", 0)
     end
-    if results[4] == "M" then 
+    if results[4] == "M" then
       Sketchup.write_default("TF", "metric", 1)
-    else 
+    else
         Sketchup.write_default("TF", "metric", 0)
     end
-    if results[5] == "R" then 
+    if results[5] == "R" then
       Sketchup.write_default("TF", "roll", 1)
-    else 
+    else
         Sketchup.write_default("TF", "roll", 0)
     end
 
     Sketchup.write_default("TF", "min_extra_timber_length", results[6].to_i )
     Sketchup.write_default("TF", "company_name", results[7])
   end
-  
+
   # Report the version
   def self.tf_version
-    vv = CB_PluginInfo::CB_TimberFraming_VERSION
-    dd = CB_PluginInfo::CB_TimberFraming_DATE
+    vv = CB_TF::CB_TimberFraming_VERSION
+    dd = CB_TF::CB_TimberFraming_DATE
     UI.messagebox("TF Extensions Version #{vv} - #{dd} - Copyright (c) Clark Bremer.")
   end
 
@@ -923,8 +923,8 @@ module CB_TF
     end
     if sel.parent == Sketchup.active_model
       return MF_GRAYED
-    end  
-    return MF_ENABLED  
+    end
+    return MF_ENABLED
   end
 
   def CB_TF.shop_dwg_valid_proc(sel)
@@ -932,7 +932,7 @@ module CB_TF
       return MF_GRAYED
     elsif sel.parent == Sketchup.active_model
       return MF_ENABLED
-    end  
+    end
     return MF_GRAYED
   end
 
@@ -941,7 +941,7 @@ module CB_TF
       return MF_GRAYED
     elsif sel.parent == Sketchup.active_model
       return MF_ENABLED
-    end  
+    end
     return MF_GRAYED
   end
 
@@ -958,10 +958,10 @@ module CB_TF
 end # module CB_TF
 
 # main program - runs when the script gets loaded
-unless file_loaded?("tf.rb") 
+unless file_loaded?("tf.rb")
 
   UI.add_context_menu_handler do |menu|
-    if menu == nil 
+    if menu == nil
       UI.messagebox("Error settting context menu handler")
     end
     menu.add_separator
@@ -1009,7 +1009,7 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Configure") {CB_TF.tf_configure}
   tf_menu.add_item("About") {CB_TF.tf_version}
   tf_menu.add_item("Contribute") {CB_TF.tf_contribute}
-  
+
 end
 
 file_loaded("tf.rb")
