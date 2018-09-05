@@ -284,11 +284,12 @@ module CB_TF
     dim_end_points = []
     start_point = Geom::Point3d.new(0,0,0)
     start_point.transform!ci.transformation  # origin of timber is global space
-    #dim_start = [start_vertex, start_point]
+#    dim_start = [start_vertex, start_point]
+#    dim_start = start_vertex
     dim_start = start_point
     puts "Origin of timber in global coordinates: #{dim_start.to_s}"
     cd.entities.each do |joint|
-        next unless joint.instance_of? Sketchup::ComponentInstance
+      next unless joint.instance_of? Sketchup::ComponentInstance
       next unless joint.definition.get_attribute( JAD, "tenon", false)
       puts "Joint found: #{joint.definition.name}"
       end_point = Geom::Point3d.new(0,0,0)
@@ -297,19 +298,27 @@ module CB_TF
       end_point.transform!ci.transformation  # origin of joint in timber space
       puts "Origin of joint in global coordinates: #{end_point.to_s}"
       end_vertex = vertex_at_origin(joint)
-      #dim_end_points << [end_vertex, end_point]
       dim_end_points << end_point
-      puts "end_vertex: #{end_vertex.position.inspect}"
+      if end_vertex
+#        dim_end_points << [end_vertex, end_point]
+#        dim_end_points << end_vertex
+      end
 
     end
 
     # sort by X distance
-    dim_end_points.sort! { |a, b|  (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs }
+    dim_end_points.sort! do |a, b|
+#      (a[1].x - dim_start[1].x).abs <=> (b[1].x - dim_start[1].x).abs
+#      (a.position.x - dim_start.position.x).abs <=> (b.position.x - dim_start.position.x).abs
+      (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs
+    end
 
+    puts "adding dimenss with start: #{dim_start.inspect}"
     dim_end_points.each do |dim_end|
-        dim = model.entities.add_dimension_linear(dim_start, dim_end, [0,0,z_offset])
-        z_offset -= 2
-      end
+      puts "adding dimension with end: #{dim_end.inspect}"
+      dim = model.entities.add_dimension_linear(dim_start, dim_end, [0,0,z_offset])
+      z_offset -= 2
+    end
 
     model.commit_operation
     puts "done adding dimensions to shop drawings"
@@ -976,8 +985,8 @@ unless file_loaded?("tf.rb")
       menu.set_validation_proc(tenon_menu_item) {CB_TF.tenon_valid_proc(sel)}
       shop_dwg_menu_item = menu.add_item("TF Make Shop Drawings") {CB_TF.make_shop_drawings(sel)}
       menu.set_validation_proc(shop_dwg_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
-      # auto_dimensions_menu_item = menu.add_item("TF Add Dimensions") {CB_TF.auto_dimensions(sel)}
-      # menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
+      auto_dimensions_menu_item = menu.add_item("TF Add Dimensions") {CB_TF.auto_dimensions(sel)}
+      menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
       dod = 0.0
       if sel.parent == Sketchup.active_model
         dod = sel.definition.get_attribute(CB_TF::JAD, "DoD", 0.0)
