@@ -282,7 +282,9 @@ module CB_TF
     start_vertex = vertex_at_origin(ci)
     puts "start_vertex: #{start_vertex.position.inspect}"
     dim_end_points = []
+    end_vertices = []
     start_point = Geom::Point3d.new(0,0,0)
+    start_path = Sketchup::InstancePath.new([ci, start_vertex])
     start_point.transform!ci.transformation  # origin of timber is global space
 #    dim_start = [start_vertex, start_point]
 #    dim_start = start_vertex
@@ -298,6 +300,7 @@ module CB_TF
       end_point.transform!ci.transformation  # origin of joint in timber space
       puts "Origin of joint in global coordinates: #{end_point.to_s}"
       end_vertex = vertex_at_origin(joint)
+      end_vertices << end_vertex
       dim_end_points << end_point
       if end_vertex
 #        dim_end_points << [end_vertex, end_point]
@@ -314,9 +317,11 @@ module CB_TF
     end
 
     puts "adding dimenss with start: #{dim_start.inspect}"
-    dim_end_points.each do |dim_end|
-      puts "adding dimension with end: #{dim_end.inspect}"
-      dim = model.entities.add_dimension_linear(dim_start, dim_end, [0,0,z_offset])
+    end_vertices.each do |end_vertex|
+      end_path = Sketchup::InstancePath.new([ci, end_vertex])
+
+      # puts "adding dimension with end: #{dim_end.inspect}"
+      dim = model.entities.add_dimension_linear(start_path, end_path, [0,0,z_offset])
       z_offset -= 2
     end
 
