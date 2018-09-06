@@ -284,7 +284,7 @@ module CB_TF
     dim_end_points = []
     end_vertices = []
     start_point = Geom::Point3d.new(0,0,0)
-    start_path = Sketchup::InstancePath.new([ci, start_vertex])
+    start_path = Sketchup::InstancePath.new([start_vertex])
     start_point.transform!ci.transformation  # origin of timber is global space
 #    dim_start = [start_vertex, start_point]
 #    dim_start = start_vertex
@@ -318,8 +318,8 @@ module CB_TF
 
     puts "adding dimenss with start: #{dim_start.inspect}"
     end_vertices.each do |end_vertex|
-      end_path = Sketchup::InstancePath.new([ci, end_vertex])
-
+      end_path = Sketchup::InstancePath.new([end_vertex])
+      puts "Adding dimension with start_path: #{start_path.persistent_id_path}, end_path: #{end_path.persistent_id_path}"
       # puts "adding dimension with end: #{dim_end.inspect}"
       dim = model.entities.add_dimension_linear(start_path, end_path, [0,0,z_offset])
       z_offset -= 2
