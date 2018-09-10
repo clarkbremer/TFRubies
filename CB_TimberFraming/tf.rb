@@ -281,47 +281,40 @@ module CB_TF
     z_offset = -12
     start_vertex = vertex_at_origin(ci)
     puts "start_vertex: #{start_vertex.position.inspect}"
-    dim_end_points = []
-    end_vertices = []
-    start_point = Geom::Point3d.new(0,0,0)
-    start_path = Sketchup::InstancePath.new([start_vertex])
-    start_point.transform!ci.transformation  # origin of timber is global space
-#    dim_start = [start_vertex, start_point]
-#    dim_start = start_vertex
-    dim_start = start_point
-    puts "Origin of timber in global coordinates: #{dim_start.to_s}"
+    dim_ends = []
+    # start_point = Geom::Point3d.new(0,0,0)
+    start_point = start_vertex.position
+    start_path = Sketchup::InstancePath.new([ci, start_vertex])
+#    start_point.transform!ci.transformation  # origin of timber is global space
+#    puts "Origin of timber in global coordinates: #{start_point.to_s}"
     cd.entities.each do |joint|
       next unless joint.instance_of? Sketchup::ComponentInstance
       next unless joint.definition.get_attribute( JAD, "tenon", false)
+      next unless joint.visible?
       puts "Joint found: #{joint.definition.name}"
-      end_point = Geom::Point3d.new(0,0,0)
-      end_point.transform!joint.transformation  # origin of joint in timber space
-      puts "Origin of joint in timber coordinates: #{end_point.to_s}"
-      end_point.transform!ci.transformation  # origin of joint in timber space
-      puts "Origin of joint in global coordinates: #{end_point.to_s}"
+      # end_point = Geom::Point3d.new(0,0,0)
+      # end_point.transform!joint.transformation  # origin of joint in timber space
+      # puts "Origin of joint in timber coordinates: #{end_point.to_s}"
+      # end_point.transform!ci.transformation  # origin of joint in global space
+      # puts "Origin of joint in global coordinates: #{end_point.to_s}"
       end_vertex = vertex_at_origin(joint)
-      end_vertices << end_vertex
-      dim_end_points << end_point
+      puts("end_vertex at #{end_vertex.position.inspect}")
       if end_vertex
-#        dim_end_points << [end_vertex, end_point]
-#        dim_end_points << end_vertex
+        dim_ends << {path: [ci, joint, end_vertex], point: end_vertex.position}
       end
 
     end
 
     # sort by X distance
-    dim_end_points.sort! do |a, b|
+    dim_ends.sort! do |a, b|
 #      (a[1].x - dim_start[1].x).abs <=> (b[1].x - dim_start[1].x).abs
 #      (a.position.x - dim_start.position.x).abs <=> (b.position.x - dim_start.position.x).abs
-      (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs
+      (a[:point].x - start_point.x).abs <=> (b[:point].x - start_point.x).abs
     end
 
-    puts "adding dimenss with start: #{dim_start.inspect}"
-    end_vertices.each do |end_vertex|
-      end_path = Sketchup::InstancePath.new([end_vertex])
-      puts "Adding dimension with start_path: #{start_path.persistent_id_path}, end_path: #{end_path.persistent_id_path}"
-      # puts "adding dimension with end: #{dim_end.inspect}"
-      dim = model.entities.add_dimension_linear(start_path, end_path, [0,0,z_offset])
+    dim_ends.each do |dim_end|
+      puts "adding dimension with end: #{dim_end.inspect}"
+      dim = model.entities.add_dimension_linear([start_path, start_point], [dim_end[:path], dim_end[:point] ], [0,0,z_offset])
       z_offset -= 2
     end
 
