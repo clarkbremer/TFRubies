@@ -13,7 +13,6 @@ else
   MOVE = "move /y"
 end
 
-
 desc "Create RBZ file"
 task :zipit do
   puts "Creating RBZ file using:"

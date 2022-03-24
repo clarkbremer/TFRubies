@@ -1,6 +1,6 @@
 ##
 ##  Ruby extensions to Sketchup for Timber Framers
-##  Copyright (c) 2008 - 2014 Clark Bremer
+##  Copyright (c) 2008 - 2019 Clark Bremer
 ##  clarkbremer@gmail.com
 ##
 
@@ -273,23 +273,14 @@ module CB_TF
   ##  Add auto-dimensions to shop drawings
   ##
   def CB_TF.auto_dimensions(sel)
-    puts "adding dimensions to shop drawings"
-      model = Sketchup.active_model
+    puts "Adding Dimensions to shop drawings"
+    model = Sketchup.active_model
     model.start_operation("add dimensions to shop drawings", true)
     ci = sel
     cd = ci.definition
-    z_offset = -12
-    start_vertex = vertex_at_origin(ci)
-    puts "start_vertex: #{start_vertex.position.inspect}"
-    dim_end_points = []
-    end_vertices = []
-    start_point = Geom::Point3d.new(0,0,0)
-    start_path = Sketchup::InstancePath.new([start_vertex])
-    start_point.transform!ci.transformation  # origin of timber is global space
-#    dim_start = [start_vertex, start_point]
-#    dim_start = start_vertex
-    dim_start = start_point
-    puts "Origin of timber in global coordinates: #{dim_start.to_s}"
+    
+  
+    end_eps = []
     cd.entities.each do |joint|
       next unless joint.instance_of? Sketchup::ComponentInstance
       next unless joint.definition.get_attribute( JAD, "tenon", false)
@@ -300,30 +291,35 @@ module CB_TF
       end_point.transform!ci.transformation  # origin of joint in timber space
       puts "Origin of joint in global coordinates: #{end_point.to_s}"
       end_vertex = vertex_at_origin(joint)
-      end_vertices << end_vertex
-      dim_end_points << end_point
-      if end_vertex
-#        dim_end_points << [end_vertex, end_point]
-#        dim_end_points << end_vertex
-      end
-
+      end_path = Sketchup::InstancePath.new([ci, joint, end_vertex])
+      end_eps << {path: end_path, point: end_point}
     end
 
-    # sort by X distance
-    dim_end_points.sort! do |a, b|
-#      (a[1].x - dim_start[1].x).abs <=> (b[1].x - dim_start[1].x).abs
-#      (a.position.x - dim_start.position.x).abs <=> (b.position.x - dim_start.position.x).abs
-      (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs
-    end
+    start_point = Geom::Point3d.new(0,0,0)
+    start_vertex = cd.entities.add_cpoint(start_point)
+    # start_vertex = vertex_at_origin(ci)
+    puts "start_vertex: #{start_vertex.position.inspect}"
+    start_path = Sketchup::InstancePath.new([ci, start_vertex])
+    start_point.transform!ci.transformation  # origin of timber is global space
+    puts "Origin of timber in global coordinates: #{start_point.to_s}"
+    puts "Start Path:"
+#     # sort by X distance
+#     dim_end_points.sort! do |a, b|
+# #      (a[1].x - dim_start[1].x).abs <=> (b[1].x - dim_start[1].x).abs
+# #      (a.position.x - dim_start.position.x).abs <=> (b.position.x - dim_start.position.x).abs
+#       (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs
+#     end
 
-    puts "adding dimenss with start: #{dim_start.inspect}"
-    end_vertices.each do |end_vertex|
-      end_path = Sketchup::InstancePath.new([end_vertex])
-      puts "Adding dimension with start_path: #{start_path.persistent_id_path}, end_path: #{end_path.persistent_id_path}"
-      # puts "adding dimension with end: #{dim_end.inspect}"
-      dim = model.entities.add_dimension_linear(start_path, end_path, [0,0,z_offset])
+
+    z_offset = -12
+    # end_eps.each do |ep|
+    ep = end_eps.first
+      puts "Adding dimension linear with: "
+      puts "  start_path: #{start_path}  start_point: #{start_point}"
+      puts "    end_path: #{ep[:path]}     end_point: #{ep[:point]}"
+      dim = model.active_entities.add_dimension_linear([start_path, start_point], [ep[:path], ep[:point]], [0,0,z_offset])
       z_offset -= 2
-    end
+    # end
 
     model.commit_operation
     puts "done adding dimensions to shop drawings"
@@ -339,7 +335,7 @@ module CB_TF
   ##  from each other to show all 4 faces, in xray mode, parralel perspective.
   ##  Must have one and only one component selected.
   ##
-  ##  load "C:/Users/Clark/Documents/TimberFraming/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
+  ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
   ##
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
@@ -618,8 +614,8 @@ module CB_TF
         drawing_name = original.name + ".skp"
       end
       tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
-      drawing_title = company_name + "\nProject: " + model.title + "\nTimber: " + timber_name + " - " + tsize + "\n" + ts + "\n"
-
+      drawing_header = company_name + "  |  " + "Project: " + model.title + "  |  " + ts
+      drawing_title = timber_name + "  -  " + tsize
       victims = Array.new
       model.entities.each do |e|
         next if shop_dwg.include? e
@@ -636,7 +632,8 @@ module CB_TF
       view.zoom sel
       sel.clear
       mark_reference_faces(shop_dwg)
-      model.add_note(drawing_title, 0.01, 0.02)
+      model.add_note(drawing_header, 0.05, 0.02)
+      model.add_note(drawing_title, 0.75, 0.02)
       begin
         sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
         if sd_file
