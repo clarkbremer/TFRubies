@@ -274,55 +274,114 @@ module CB_TF
   ##
   def CB_TF.auto_dimensions(sel)
     puts "Adding Dimensions to shop drawings"
+    if sel_is_tenon
+      CB_TF.auto_dimension_mortise(sel)
+      return
+    end
     model = Sketchup.active_model
     model.start_operation("add dimensions to shop drawings", true)
     ci = sel
     cd = ci.definition
-    
-  
+    lowest_z = 1000;
+
     end_eps = []
-    cd.entities.each do |joint|
-      next unless joint.instance_of? Sketchup::ComponentInstance
-      next unless joint.definition.get_attribute( JAD, "tenon", false)
-      puts "Joint found: #{joint.definition.name}"
+    cd.entities.each do |ent|
+      if ent.instance_of? Sketchup::Face
+        p = ent.bounds.center
+        p.transform!ci.transformation
+        lowest_z = p.z if p.z < lowest_z
+      end
+      next unless ent.instance_of? Sketchup::ComponentInstance
+      next unless ent.definition.get_attribute( JAD, "tenon", false)
+      next if ent.hidden?
+      puts "ent found: #{ent.definition.name}"
       end_point = Geom::Point3d.new(0,0,0)
-      end_point.transform!joint.transformation  # origin of joint in timber space
-      puts "Origin of joint in timber coordinates: #{end_point.to_s}"
-      end_point.transform!ci.transformation  # origin of joint in timber space
-      puts "Origin of joint in global coordinates: #{end_point.to_s}"
-      end_vertex = vertex_at_origin(joint)
-      end_path = Sketchup::InstancePath.new([ci, joint, end_vertex])
-      end_eps << {path: end_path, point: end_point}
+      end_point.transform!ent.transformation  # origin of ent in timber space
+      puts "Origin of ent in timber coordinates: #{end_point.to_s}"
+      end_point.transform!ci.transformation  # origin of ent in global space
+      puts "Origin of ent in global coordinates: #{end_point.to_s}"
+      end_point.y = 0
+      end_eps << end_point
     end
 
     start_point = Geom::Point3d.new(0,0,0)
     start_vertex = cd.entities.add_cpoint(start_point)
     # start_vertex = vertex_at_origin(ci)
     puts "start_vertex: #{start_vertex.position.inspect}"
-    start_path = Sketchup::InstancePath.new([ci, start_vertex])
-    start_point.transform!ci.transformation  # origin of timber is global space
+    start_point.transform!ci.transformation  # origin of timber in global space
     puts "Origin of timber in global coordinates: #{start_point.to_s}"
-    puts "Start Path:"
-#     # sort by X distance
-#     dim_end_points.sort! do |a, b|
-# #      (a[1].x - dim_start[1].x).abs <=> (b[1].x - dim_start[1].x).abs
-# #      (a.position.x - dim_start.position.x).abs <=> (b.position.x - dim_start.position.x).abs
-#       (a.x - dim_start.x).abs <=> (b.x - dim_start.x).abs
-#     end
 
+    start_point.y = 0
+    start_point.z = lowest_z
+    # remove duplicates (note that uniq! won't work, as these x are "Length" objects, not ints.)
+    end_eps.delete_if do |ep|
+      end_eps[end_eps.index(ep)+1..-1].any? { |other| ep == other }
+    end
 
-    z_offset = -12
-    # end_eps.each do |ep|
-    ep = end_eps.first
+    # sort by X distance
+    end_eps.sort! do |a, b|
+      a.x <=> b.x
+    end
+
+    z_offset = -4
+    end_eps.each do |ep|
       puts "Adding dimension linear with: "
-      puts "  start_path: #{start_path}  start_point: #{start_point}"
-      puts "    end_path: #{ep[:path]}     end_point: #{ep[:point]}"
-      dim = model.active_entities.add_dimension_linear([start_path, start_point], [ep[:path], ep[:point]], [0,0,z_offset])
+      puts "  start_point: #{start_point}"
+      puts "  end_point: #{ep}"
+      puts "  z_offset: #{z_offset}"
+      dim = model.active_entities.add_dimension_linear(start_point, ep, [0,0,z_offset])
       z_offset -= 2
-    # end
+    end
 
     model.commit_operation
     puts "done adding dimensions to shop drawings"
+  end
+
+  def CB_TF.auto_dimension_mortise(mortise)
+    mm = Sketchup.active_model
+    cd = mortise.definition
+    puts "Auto-dimension mortise: #{cd.name}"
+    td = mortise.parent
+    ti = mm.active_path.first
+
+    # are we looking "into" the mortise, or looking at a profile?
+    # Find frontmost face of timber
+
+    frontmost = 10000
+    ff = nil
+    ti.definition.entities.each do |face|
+      next if not face.instance_of? Sketchup::Face
+      ctr = face.bounds.center
+      ctr.transform!ti.transformation
+      if ctr.y < frontmost
+        frontmost = ctr.y
+        ff = face
+      end
+    end
+    puts "frontmost face of timber is #{ff}"
+    puts "    with y of #{ff.bounds.center.y}"
+
+    jnv = Geom::Vector3d.new(0,0,1)   # joint normal vector
+    jo = Geom::Point3d.new(0,0,0)  # joint origin
+    jnv.transform!mortise.transformation
+    jo.transform!mortise.transformation
+    if (ff.normal == jnv) or (ff.normal == jnv.reverse)
+      if ff.classify_point(jo) >= 1 and ff.classify_point(jo) <= 4
+        puts("normals match and attached to front - this joint is facing us.")
+        auto_dimension_mortise_facing(mortise, ti)
+      else
+        puts("normals match, but not attached to front - this joint is on the backside.")
+      end
+    else
+      puts("normals dont match - this joint is not facing us.")
+      auto_dimension_mortise_profile(mortise, ti)
+    end
+  end
+
+  def CB_TF.auto_dimension_mortise_facing(mortise, ti)
+  end
+
+  def CB_TF.auto_dimension_mortise_profile(mortise, ti)
   end
 
 
@@ -949,7 +1008,7 @@ module CB_TF
 
   def CB_TF.auto_dimensions_valid_proc(sel)
     if sel_is_tenon
-      return MF_GRAYED
+      return MF_ENABLED
     elsif sel.parent == Sketchup.active_model
       return MF_ENABLED
     end
