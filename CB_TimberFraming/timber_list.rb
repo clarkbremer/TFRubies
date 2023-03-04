@@ -104,12 +104,9 @@ module CB_TF
   def CB_TF.make_timber_list(with_layers=false)
     begin
       model = Sketchup.active_model
-      s = Sketchup.read_default("TF", "excel", 0).to_i
-      if s == 1
-        then excel_mode = true
-        else excel_mode = false
-      end
-      if excel_mode
+      file_format = Sketchup.read_default("TF", "list_file_format", "C")
+      case file_format
+      when "X"
         if RUBY_VERSION.to_f == 1.8
           require('CB_TimberFraming/win32ole')
         else
@@ -126,8 +123,13 @@ module CB_TF
           then tl_file_name = UI.savepanel("Save Timber List", "","timber_list.xlsx")
           else tl_file_name = UI.savepanel("Save Timber List", "","timber_list.xls")
         end
-      else
-        tl_file_name = UI.savepanel("Save Timber List", "","timber_list.txt")
+      when "C", "T"
+        case file_format
+        when "C"
+          tl_file_name = UI.savepanel("Save Timber List", "","timber_list.csv")
+        when "T"
+          tl_file_name = UI.savepanel("Save Timber List", "","timber_list.txt")
+        end  
         if tl_file_name
           while tl_file_name.index("\\")
             tl_file_name["\\"]="/"
@@ -142,7 +144,7 @@ module CB_TF
         end
       else
         UI.messagebox("Timber List NOT saved!")
-        if excel_mode
+        if file_format == "X"
           excel.Quit
         end
         return
@@ -166,7 +168,8 @@ module CB_TF
       ts = tm.strftime("Created on: %m/%d/%Y")
 
       # write the title block
-      if excel_mode
+      case file_format
+      when "X"
         excel.visible = true
         workbook = excel.Workbooks.add
         worksheet = workbook.Worksheets(1) #get hold of the first worksheet
@@ -206,7 +209,7 @@ module CB_TF
         row+=1
         worksheet.cells(row,1).value = ts
         row+=2
-      else
+      when "C", "T"
         tl_file = File.new(tl_file_name, "w")
         tl_file << "Timber Materials List - " + company_name + "\n"
         tl_file << "Project: " + project + "\n"
@@ -269,7 +272,8 @@ module CB_TF
       end
 
       print("exporting\n")
-      if excel_mode
+      case file_format
+      when "X"
         worksheet.cells(row,1).value = "Named Timbers"
         worksheet.cells(row,1).font.bold = true
         worksheet.cells(row,1).font.italic = true
@@ -589,15 +593,15 @@ module CB_TF
         rescue
           UI.messagebox("Error saving Excel File (might be open in excel)")
         end
-
         workbook.Close(1)
         excel.Quit
-      else  # csv mode
-        tl_file << "Timbers:\n"
-        row+=1
+
+      when "C"  # csv mode
+        tl_file << "\nTimbers:\n"
+        row+=2
         if metric
-          then tl_file << "Name\t\tW\tD\tL(m)\tL(cm)\n"
-          else tl_file << "Name\t\tW\tD\tL(ft)\tL(in)\tBF\n"
+          then tl_file << "Name,,W,D,L(m),L(cm)\n"
+          else tl_file << "Name,,W,D,L(ft),L(in),BF\n"
         end
         row+=1
         nl.each do |ct|
@@ -607,18 +611,106 @@ module CB_TF
           end
           ct.count.times do
             if metric
-              tl_file << ct.name  << "\t\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\n"
+              tl_file << ct.name  << ",," << ct.w << "," << ct.d << "," << ct.ft << "," << ct.l << "\n"
             else
-              bf = (ct.w * ct.d * ct.ft)/12
-              bf = ((bf*10).round)/10.0
               #                        A B      C               D               E                F
-              tl_file << ct.name  << "\t\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\t" << "=(C#{row}*D#{row}*E#{row})/12" << "\n"
+              tl_file << ct.name  << ",," << ct.w << "," << ct.d << "," << ct.ft << "," << ct.l << "," << "=(C#{row}*D#{row}*E#{row})/12" << "\n"
             end
             row+=1
           end
         end
         #            A B C D E F
-        tl_file << "\t\t\t\t\t\t=SUM(G#{row-nl.length}:G#{row-1})\n"
+        tl_file << ",,,,,,=SUM(G#{row-nl.length}:G#{row-1})\n"
+        row+=1
+        tl_file << "\n" << "Un-named components:\n"
+        row+=2
+
+        if metric
+          then tl_file << "Name,Qty,W,D,L(m),L(cm)\n"
+          else tl_file << "Name,Qty,W,D,L(ft),L(in),BF\n"
+        end
+        row+=1
+        ul.each do |ct|
+          if metric
+            tl_file << ct.name << "," << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft << "," << ct.l << "\n"
+          else
+            tl_file << ct.name << "," << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft << "," << ct.l << "," << "=(B#{row}*C#{row}*D#{row}*E#{row})/12" << "\n"
+          end
+          row+=1
+        end
+        tl_file << ",,,,,,=SUM(G#{row-ul.length}:G#{row-1})\n"
+        row+=1
+        tl_file << "\n" << "Tally:\n"
+        row+=2
+
+        if metric
+          then tl_file << "W,D,Qty,L(m)\n"
+          else tl_file << "W,D,Qty,L(ft),BF\n"
+        end
+        row+=1
+        cl.each do |ct|
+          if metric
+            tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "\n"
+          else
+            tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "," << "=(A#{row}*B#{row}*C#{row}*D#{row})/12" << "\n"
+          end
+          row+=1
+        end
+        tl_file << ",,,,=SUM(E#{row-cl.length}:E#{row-1})\n"
+        row+=1
+        if with_layers
+          tl_file << "\n" << "Tally by Layer:\n"
+          row+=1
+          if metric
+            then tl_file << "W,D,Qty,L(m),V(m3)\n"
+            else tl_file << "W,D,Qty,L(ft),BF\n"
+          end
+          row+=1
+          layer_lists.each_pair do |layer, list|
+            tl_file << "\n" << "  == Layer #{layer.name} ==\n"
+            list.each do |ct|
+              if metric
+                tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft/100 << "," << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
+              else
+                bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
+                bf = ((bf*10).round)/10.0
+                tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "," << bf.to_s << "\n"
+              end
+              row+=1
+            end
+          end
+        end
+        tl_file.close
+
+      when "T" # Text file
+        tl_file << "Timbers:\n"
+        row+=1
+        if metric
+          then tl_file << "Name\t\tW\tD\tL(m)\tL(cm)\n"
+          else tl_file << "Name\t\tW\tD\tL(ft)\tL(in)\tBF\n"
+        end
+        row+=1
+        total_bf = 0.0
+        nl.each do |ct|
+          if (ct.count > 1)
+            print("warning: duplicate named timber:"+ct.name+"\n")
+            UI.messagebox("TF Rubies: warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
+          end
+          ct.count.times do
+            if metric
+              tl_file << ct.name  << "\t\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\n"
+            else
+              bf = (ct.w * ct.d * ct.ft)/12.0
+              total_bf += bf
+              bf = ((bf*100).round)/100.0
+              tl_file << ct.name  << "\t\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\t" << bf.to_s << "\n"
+            end
+            row+=1
+          end
+        end
+        total_bf = ((total_bf*100).round)/100.0
+        #            A B C D E F
+        tl_file << "\t\t\t\t\t\t" << total_bf.to_s << "\n"
         row+=1
         tl_file << "\n" << "Un-named components:\n"
         row+=2
@@ -628,17 +720,20 @@ module CB_TF
           else tl_file << "Name\tQty\tW\tD\tL(ft)\tL(in)\tBF\n"
         end
         row+=1
+        total_bf = 0.0
         ul.each do |ct|
           if metric
             tl_file << ct.name << "\t" << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\n"
           else
-            bf = (ct.count * ct.w * ct.d * ct.ft)/12
-            bf = ((bf*10).round)/10.0
-            tl_file << ct.name << "\t" << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\t" << "=(B#{row}*C#{row}*D#{row}*E#{row})/12" << "\n"
+            bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
+            total_bf += bf
+            bf = ((bf*100).round)/100.0
+            tl_file << ct.name << "\t" << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << ct.l << "\t" << bf.to_s << "\n"
           end
           row+=1
         end
-        tl_file << "\t\t\t\t\t\t=SUM(G#{row-ul.length}:G#{row-1})\n"
+        total_bf = ((total_bf*100).round)/100.0
+        tl_file << "\t\t\t\t\t\t" << total_bf.to_s << "\n"
         row+=1
         tl_file << "\n" << "Tally:\n"
         row+=2
@@ -648,17 +743,20 @@ module CB_TF
           else tl_file << "W\tD\tQty\tL(ft)\tBF\n"
         end
         row+=1
+        total_bf = 0.0
         cl.each do |ct|
           if metric
             tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\n"
           else
-            bf = (ct.count * ct.w * ct.d * ct.ft)/12
-            bf = ((bf*10).round)/10.0
-            tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << "=(A#{row}*B#{row}*C#{row}*D#{row})/12" << "\n"
+            bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
+            total_bf += bf
+            bf = ((bf*100).round)/100.0
+            tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
           end
           row+=1
         end
-        tl_file << "\t\t\t\t=SUM(E#{row-cl.length}:E#{row-1})\n"
+        total_bf = ((total_bf*100).round)/100.0
+        tl_file << "\t\t\t\t" << total_bf.to_s << "\n"
         row+=1
         if with_layers
           tl_file << "\n" << "Tally by Layer:\n"
@@ -674,7 +772,7 @@ module CB_TF
               if metric
                 tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft/100 << "\t" << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
               else
-                bf = (ct.count * ct.w * ct.d * ct.ft)/12
+                bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
                 bf = ((bf*10).round)/10.0
                 tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
               end
@@ -684,7 +782,7 @@ module CB_TF
         end
 
         tl_file.close
-      end  # csv mode
+      end  # file format case
       print("timber list saved\n")
       begin
         rescue

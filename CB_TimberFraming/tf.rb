@@ -384,7 +384,6 @@ module CB_TF
   def CB_TF.auto_dimension_mortise_profile(mortise, ti)
   end
 
-
   ##########################################################
   ##  Make Shop Drawings
   ##
@@ -398,7 +397,7 @@ module CB_TF
   ##
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
-    # puts "Sketchup Version: #{su_ver}"
+    puts "Sketchup Version: #{su_ver}"
     tm = Time.now
     if not original.instance_of? Sketchup::ComponentInstance
       UI.messagebox "TF Rubies: Must have one and only one timber selected"
@@ -608,6 +607,7 @@ module CB_TF
       end
 
       ## find and hide any joints and direction lables on the back side (facing away from the camera)
+      puts("hiding backside joinery.")
       if xray_mode
         for i in 0..3
           backmost = -10000
@@ -647,6 +647,7 @@ module CB_TF
         end # for each shop drawing
       end  # if xray mode
 
+      puts("adjusting camera settings")
       camera = Sketchup::Camera.new
       camera.perspective = false
       up = camera.up
@@ -691,11 +692,13 @@ module CB_TF
       view.zoom sel
       sel.clear
       mark_reference_faces(shop_dwg)
-      model.add_note(drawing_header, 0.05, 0.02)
+      model.add_note(drawing_header, 0.25, 0.02)
       model.add_note(drawing_title, 0.75, 0.02)
+      puts("showing file save dialog.  Drawing name: #{drawing_name}")
       begin
         sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
         if sd_file
+          print("File name returned from save dialog: "+ sd_file + "\n")
           while sd_file.index("\\")
             sd_file["\\"]="/"
           end
@@ -893,7 +896,7 @@ module CB_TF
     p0 = "Shop drawings in XRay Mode?"
     p1 = "Directional labels on shop drawings?"
     p2 = "Round up dimensions on timber list?"
-    p3 = "Timber list as Text or Xcel?"
+    p3 = "Timber list as CSV, Text or Xcel?"
     p4 = "English or Metric?"
     p5 = "Unwrap or Roll shop drawings?"
     p6 = "Minimum extra timber length for timber list:"
@@ -901,12 +904,11 @@ module CB_TF
 
     ny = ["N", "Y"]
     em = ["E", "M"]
-    tx = ["T", "X"]
     ru = ["U", "R"]
     dd0 = %w[Y N].join("|")
     dd1 = %w[Y N].join("|")
     dd2 = %w[Y N].join("|")
-    dd3 = %w[T X].join("|")
+    dd3 = %w[C T X].join("|")
     dd4 = %w[E M].join("|")
     dd5 = %w[U R].join("|")
     dds = [dd0, dd1, dd2, dd3, dd4, dd5]
@@ -914,7 +916,7 @@ module CB_TF
     d0 = ny[Sketchup.read_default("TF", "xray", 1)]
     d1 = ny[Sketchup.read_default("TF", "dir_labels", 1)]
     d2 = ny[Sketchup.read_default("TF", "roundup", 1)]
-    d3 = tx[Sketchup.read_default("TF", "excel", 0)]
+    d3 = Sketchup.read_default("TF", "list_file_format", "C")
     d4 = em[Sketchup.read_default("TF", "metric", 0)]
     d5 = ru[Sketchup.read_default("TF", "roll", 0)]
     d6 = Sketchup.read_default("TF", "min_extra_timber_length", "24")
@@ -939,10 +941,13 @@ module CB_TF
     else
         Sketchup.write_default("TF", "roundup", 0)
     end
-    if results[3] == "X" then
-      Sketchup.write_default("TF", "excel", 1)
-    else
-        Sketchup.write_default("TF", "excel", 0)
+    case results[3]
+    when "C" 
+      Sketchup.write_default("TF", "list_file_format", "C")
+    when "T"
+      Sketchup.write_default("TF", "list_file_format", "T")
+    when "X"
+      Sketchup.write_default("TF", "list_file_format", "X")
     end
     if results[4] == "M" then
       Sketchup.write_default("TF", "metric", 1)
@@ -1046,8 +1051,8 @@ unless file_loaded?("tf.rb")
       menu.set_validation_proc(tenon_menu_item) {CB_TF.tenon_valid_proc(sel)}
       shop_dwg_menu_item = menu.add_item("TF Make Shop Drawings") {CB_TF.make_shop_drawings(sel)}
       menu.set_validation_proc(shop_dwg_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
-      auto_dimensions_menu_item = menu.add_item("TF Add Dimensions") {CB_TF.auto_dimensions(sel)}
-      menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
+      # auto_dimensions_menu_item = menu.add_item("TF Add Dimensions") {CB_TF.auto_dimensions(sel)} ## Experimental
+      # menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
       dod = 0.0
       if sel.parent == Sketchup.active_model
         dod = sel.definition.get_attribute(CB_TF::JAD, "DoD", 0.0)
@@ -1079,7 +1084,6 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Configure") {CB_TF.tf_configure}
   tf_menu.add_item("About") {CB_TF.tf_version}
   tf_menu.add_item("Contribute") {CB_TF.tf_contribute}
-
 end
 
 file_loaded("tf.rb")
