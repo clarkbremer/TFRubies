@@ -1,6 +1,6 @@
 ##
 ##  Ruby extensions to Sketchup for Timber Framers
-##  Copyright (c) 2008 - 2019 Clark Bremer
+##  Copyright (c) 2008 - 2023 Clark Bremer
 ##  clarkbremer@gmail.com
 ##
 
