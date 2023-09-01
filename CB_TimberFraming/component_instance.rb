@@ -2,9 +2,9 @@
 # To adhere to Sketchup Plugin Standards, they were all made into module methods that
 # take a component instance as their first parameter.  :-(
 
-# load "C:/Users/Clark/Documents/TimberFraming/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/component_instance.rb"
+# load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/component_instance.rb"
 module CB_TF
-  def CB_TF.add_directional_lables(timber)
+  def CB_TF.add_directional_attributes(timber)
     northmost = -10000
     southmost = 10000
     eastmost = -10000
@@ -100,38 +100,12 @@ module CB_TF
     end
     return if north == nil  ## No Faces?  No Labels!
 
-    dl_layer = Sketchup.active_model.layers.add "shop drawing direction lables"
-    ov = Geom::Vector3d.new
-
-    ov = north.ctr-south.ctr
-    if ov.length != 0
-      ov.length=3
-      dl = timber.definition.entities.add_text("N", north.ctr, ov)
-      dl.layer = dl_layer
-      ov.reverse!
-      dl = timber.definition.entities.add_text("S", south.ctr, ov)
-      dl.layer = dl_layer
-    end
-
-    ov = east.ctr-west.ctr
-    if ov.length != 0
-      ov.length=3
-      dl = timber.definition.entities.add_text("E", east.ctr, ov)
-      dl.layer = dl_layer
-      ov.reverse!
-      dl = timber.definition.entities.add_text("W", west.ctr, ov)
-      dl.layer = dl_layer
-    end
-
-    ov = top.ctr-bottom.ctr
-    if ov.length != 0
-      ov.length=3
-      dl = timber.definition.entities.add_text("T", top.ctr, ov)
-      dl.layer = dl_layer
-      ov.reverse!
-      dl = timber.definition.entities.add_text("B", bottom.ctr, ov)
-      dl.layer = dl_layer
-    end
+    north.face.set_attribute(JAD, "Direction", "N")
+    south.face.set_attribute(JAD, "Direction", "S")
+    east.face.set_attribute(JAD, "Direction", "E")
+    west.face.set_attribute(JAD, "Direction", "W")
+    top.face.set_attribute(JAD, "Direction", "T")
+    bottom.face.set_attribute(JAD, "Direction", "B")
   end  # add directional labels
 
   def CB_TF.largest_face(timber)
@@ -296,7 +270,7 @@ module CB_TF
         rotate_around_axis(timber, red, green)
         #UI.messagebox("pause after red rotatation toward green")
         if make_dir_lables then
-          add_directional_lables(timber)
+          add_directional_attributes(timber)
         end
         rotate_around_axis(timber, blue, red)
         #UI.messagebox("pause after blue rotatation toward red")
@@ -306,7 +280,7 @@ module CB_TF
         #print("red-blue rafter\n")
         rotate_around_axis(timber, green, red)
         if make_dir_lables then
-          add_directional_lables(timber)
+          add_directional_attributes(timber)
         end
         rotate_around_axis(timber, blue, red)  # redundnat?
         roll_plumb(timber)
@@ -321,7 +295,7 @@ module CB_TF
       #print("not a rafter\n")
       roll_plumb(timber)
       if make_dir_lables then
-        add_directional_lables(timber)
+        add_directional_attributes(timber)
       end
       rotate_around_axis(timber, green, red)
       rotate_around_axis(timber, blue, red)

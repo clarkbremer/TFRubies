@@ -25,7 +25,7 @@ module CB_TF
       ss = mm.selection
       return nil if ss.count != 1
       cc = ss[0]
-      return nil if not cc.instance_of? Sketchup::ComponentInstance
+      return nil unless cc.instance_of? Sketchup::ComponentInstance
       cc
   end
 
@@ -36,7 +36,7 @@ module CB_TF
       ss = mm.selection
       return nil if ss.count != 1
       ff = ss[0]
-      return nil if not ff.instance_of? Sketchup::Face
+      return nil unless ff.instance_of? Sketchup::Face
       ff
   end
 
@@ -89,7 +89,7 @@ module CB_TF
     on_mortise_face = false
     if tpc then  # don't bother if we hit empty space
       mortise.definition.entities.each do |face|
-        next if not face.instance_of? Sketchup::Face
+        next unless face.instance_of? Sketchup::Face
 
         if face.classify_point(mpc) >= 1 and face.classify_point(mpc) <= 4 then
           on_mortise_face = true
@@ -122,8 +122,8 @@ module CB_TF
     model = Sketchup.active_model
 
     mortise.definition.entities.each do |peg|
-      next if not peg.instance_of? Sketchup::Face
-      next if not peg.get_attribute( JAD, "peg", false)
+      next unless peg.instance_of? Sketchup::Face
+      next unless peg.get_attribute( JAD, "peg", false)
   #    print("found a peg: " + peg.to_s + "\n")
       cpt = get_peg_center(mortise, timber, peg)
       if cpt then
@@ -150,15 +150,15 @@ module CB_TF
         f.pushpull(-1)
       end
       model.active_entities.each do |timber|
-        next if not timber.instance_of? Sketchup::ComponentInstance
+        next unless timber.instance_of? Sketchup::ComponentInstance
         next if timber.hidden?
-        next if not timber.layer.visible?
+        next unless timber.layer.visible?
         timber.definition.entities.each do |tenon|
-          next if not tenon.instance_of? Sketchup::ComponentInstance
+          next unless tenon.instance_of? Sketchup::ComponentInstance
           if tenon.definition.get_attribute( JAD, "tenon", false) then
             tenon.definition.entities.each do |peg_face|
-              next if not peg_face.instance_of? Sketchup::Face
-              next if not peg_face.get_attribute( JAD, "peg", false)
+              next unless peg_face.instance_of? Sketchup::Face
+              next unless peg_face.get_attribute( JAD, "peg", false)
               peg_ctr = get_peg_center(tenon, timber, peg_face)
               #print("Peg: " + peg_ctr.to_s + "\n")
               if peg_ctr then
@@ -181,7 +181,7 @@ module CB_TF
   end
 
   # Place ref face triangle marks on shop drawings
-  def CB_TF.mark_reference_faces(shop_dwg)
+  def CB_TF.mark_reference_faces(shop_dwg, layer)
     for i in 0..3
       sd = shop_dwg[i]
       topmost = -10000
@@ -195,7 +195,7 @@ module CB_TF
 
       model = Sketchup.active_model
       sd.definition.entities.each do |face|
-        next if not face.instance_of? Sketchup::Face
+        next unless face.instance_of? Sketchup::Face
         ctr = face.bounds.center
         ctr.transform!sd.transformation
         if ctr.z > topmost
@@ -229,6 +229,7 @@ module CB_TF
         pt2 = Geom::Point3d.new(x-1, y, z+2)
         pt3 = Geom::Point3d.new(x+1, y, z+2)
         grp = model.entities.add_group
+        grp.layer = layer
         ref_mark = grp.entities.add_face(pt1, pt2, pt3)
         ref_mark.material = [0,0,0] # paint it black
         ref_mark.back_material = [0,0,0]
@@ -247,6 +248,7 @@ module CB_TF
         pt2 = Geom::Point3d.new(x-1, y, z-2)
         pt3 = Geom::Point3d.new(x+1, y, z-2)
         grp = model.entities.add_group
+        grp.layer = layer
         ref_mark = grp.entities.add_face(pt1, pt2, pt3)
         ref_mark.material = [0,0,0] # paint it black
         ref_mark.back_material = [0,0,0]
@@ -350,7 +352,7 @@ module CB_TF
     frontmost = 10000
     ff = nil
     ti.definition.entities.each do |face|
-      next if not face.instance_of? Sketchup::Face
+      next unless face.instance_of? Sketchup::Face
       ctr = face.bounds.center
       ctr.transform!ti.transformation
       if ctr.y < frontmost
@@ -415,7 +417,26 @@ module CB_TF
   		  return
   		end
   	end
+
     model.start_operation("make shop drawings", true)
+    # create pages (scenes) and layers (tags) for shops and iso
+    pages = model.pages
+    tf_shops_page = pages.add "tf_shops"
+    tf_iso_page = pages.add "tf_iso"
+    layers = model.layers
+    tf_shops_layer = layers.add "tf_shops_layer"
+    tf_iso_layer = layers.add "tf_iso_layer"
+    tf_shops_layer.visible = true
+    tf_iso_layer.visible = false
+
+    styles = model.styles
+    status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
+    tf_shops_style = styles["[Default Style]"]
+    tf_shops_style.name = "tf_shops_style"
+    tf_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    styles.selected_style = tf_shops_style
+
+    sel = model.selection
     view = model.active_view
 
     # so we can put it all back the way we found it.
@@ -427,8 +448,8 @@ module CB_TF
     save_cam_fov = cam.fov
     save_xray = model.rendering_options["ModelTransparency"]
     save_sky = model.rendering_options["DrawHorizon"]
-
-    sel = model.selection
+    save_background = model.rendering_options["BackgroundColor"]
+    save_back_edges = model.rendering_options["DrawBackEdges"]
 
   	# crashes second time through
     #   pgs = Array.new
@@ -461,278 +482,329 @@ module CB_TF
     end
 
     get_dimensions(original, min_extra_timber_length, metric, roundup, tdims)
-    begin
-      # make an array of instances to hold the 4 copies of the original plus joinery
-      shop_dwg = Array.new
-      # make a copy of the original
-        shop_dwg[0] = model.entities.add_instance(original.definition, original.transformation)
-      shop_dwg[0].make_unique  # don't mess up the original!
+    # make an array of instances to hold the 4 copies of the original plus joinery
+    shop_dwg = Array.new
+    # make a copy of the original
+    shop_dwg[0] = model.entities.add_instance(original.definition, original.transformation)
+    shop_dwg[0].make_unique  # don't mess up the original!
+    shop_dwg[0].layer = tf_shops_layer
 
 
-      # On any of our own tenons. do these tasks
-      shop_dwg[0].definition.entities.each do |tenon|
-        # find the tenons
-        next if not tenon.instance_of? Sketchup::ComponentInstance
+    # On any of our own tenons. do these tasks
+    shop_dwg[0].definition.entities.each do |tenon|
+      # find the tenons
+      next unless tenon.instance_of? Sketchup::ComponentInstance
 
-        # put peg marks on our own tenons
-        next if not tenon.definition.get_attribute( JAD, "tenon", false)
-        tenon.definition.entities.each do |peg|
-          next if not peg.instance_of? Sketchup::Face
-          next if not peg.get_attribute( JAD, "peg", false)
-          # print("found a peg: " + peg.to_s + "\n")
-          pc = Geom::Point3d.new(peg.bounds.center)  #peg center
-          tenon.definition.entities.add_cpoint pc
-        end
+      # put peg marks on our own tenons
+      next unless tenon.definition.get_attribute( JAD, "tenon", false)
+      tenon.definition.entities.each do |peg|
+        next unless peg.instance_of? Sketchup::Face
+        next unless peg.get_attribute( JAD, "peg", false)
+        # print("found a peg: " + peg.to_s + "\n")
+        pc = Geom::Point3d.new(peg.bounds.center)  #peg center
+        tenon.definition.entities.add_cpoint pc
+      end
 
-        # hide edges at the timber/joint interface
-        lv0 = Geom::Point3d.new(0,0,0)  # local vertices
-        lv1 = Geom::Point3d.new(0,0,0)
-        tenon.definition.entities.each do |tedge|   # tenon edge
-          next if not tedge.instance_of? Sketchup::Edge
-          tv0 = tedge.vertices[0].position
-          v0 = tv0
-          tv1 = tedge.vertices[1].position
-          v1 = tv1
-          if (tv0.z == 0) and (tv1.z == 0) then
-            #print("found a tenon edge to hide - verts:", tv0.to_s, tv1.to_s, "\n")
-            tedge.hidden = true
-            v0.transform!tenon.transformation
-            v1.transform!tenon.transformation
-            #print("in local space:", v0.to_s, v1.to_s, "\n")
-            # do any of our own edges match up to this one?
-            shop_dwg[0].definition.entities.each do |ledge|  # local edge
-              next if not ledge.instance_of? Sketchup::Edge
-              lv0 = ledge.vertices[0].position
-              lv1 = ledge.vertices[1].position
-              #print("testing local edge to hide - verts:", lv0.to_s, lv1.to_s, "\n")
-              if ((lv0 == v0) and (lv1 == v1)) or ((lv0 == v1) and (lv1 == v0)) then
-                #print("found a local edge to hide - verts:", lv0.to_s, lv1.to_s, "\n")
-                ledge.hidden = true
-              end
+      # hide edges at the timber/joint interface
+      lv0 = Geom::Point3d.new(0,0,0)  # local vertices
+      lv1 = Geom::Point3d.new(0,0,0)
+      tenon.definition.entities.each do |tedge|   # tenon edge
+        next unless tedge.instance_of? Sketchup::Edge
+        tv0 = tedge.vertices[0].position
+        v0 = tv0
+        tv1 = tedge.vertices[1].position
+        v1 = tv1
+        if (tv0.z == 0) and (tv1.z == 0) then
+          #print("found a tenon edge to hide - verts:", tv0.to_s, tv1.to_s, "\n")
+          tedge.hidden = true
+          v0.transform!tenon.transformation
+          v1.transform!tenon.transformation
+          #print("in local space:", v0.to_s, v1.to_s, "\n")
+          # do any of our own edges match up to this one?
+          shop_dwg[0].definition.entities.each do |ledge|  # local edge
+            next unless ledge.instance_of? Sketchup::Edge
+            lv0 = ledge.vertices[0].position
+            lv1 = ledge.vertices[1].position
+            #print("testing local edge to hide - verts:", lv0.to_s, lv1.to_s, "\n")
+            if ((lv0 == v0) and (lv1 == v1)) or ((lv0 == v1) and (lv1 == v0)) then
+              #print("found a local edge to hide - verts:", lv0.to_s, lv1.to_s, "\n")
+              ledge.hidden = true
             end
           end
         end
       end
+    end
 
-      # now collect and duplicate all the joinery from other components that protrudes into our space
-      global_to = Geom::Point3d.new(0,0,0)    # global tenon origin
-      local_to = Geom::Point3d.new(0,0,0)    # local tenon origin
+    # now collect and duplicate all the joinery from other components that protrudes into our space
+    global_to = Geom::Point3d.new(0,0,0)    # global tenon origin
+    local_to = Geom::Point3d.new(0,0,0)    # local tenon origin
 
 
-      # every comp inst in the top level of the model is a potential timber
-      model.active_entities.each do |timber|
-        next unless timber.instance_of? Sketchup::ComponentInstance
-        next if timber == original
-        next if timber == shop_dwg[0]
-        # print("Found potential timber:", timber, "\n")
-        # every comp inst in the top level of the timber is a potential tenon
-        timber.definition.entities.each do |tenon|
-          next if not tenon.instance_of? Sketchup::ComponentInstance
-          next if not tenon.definition.get_attribute( JAD, "tenon", false)
-          # print "found a potential tenon:", tenon, "\n"
-          global_to.set!(0,0,0)
-          global_to.transform!tenon.transformation  # this in the position of the tenon within the context of the timber
-          # print("global_to1: " +global_to.to_s + "\n")
-          global_to.transform!timber.transformation  # now we've transformed it to global coordinates
-          # print("global_to2: " +global_to.to_s + "\n")
-          gto_transformation = Geom::Transformation.translation(global_to)
-          local_to.set!(0,0,0)
-          local_to.transform!(original.transformation.inverse * gto_transformation)
-          # print("local_to: " +local_to.to_s + "\n")
-          next if not original.bounds.contains?(global_to)  # for efficiency, narrow it down with this
-          # but that can still produce false positives (e.g. rafters), so preform this face test also:
-          # print("tenon within bounds:" + tenon.to_s + "\n")
+    # every comp inst in the top level of the model is a potential timber
+    model.active_entities.each do |timber|
+      next unless timber.instance_of? Sketchup::ComponentInstance
+      next if timber == original
+      next if timber == shop_dwg[0]
+      # print("Found potential timber:", timber, "\n")
+      # every comp inst in the top level of the timber is a potential tenon
+      timber.definition.entities.each do |tenon|
+        next unless tenon.instance_of? Sketchup::ComponentInstance
+        next unless tenon.definition.get_attribute( JAD, "tenon", false)
+        # print "found a potential tenon:", tenon, "\n"
+        global_to.set!(0,0,0)
+        global_to.transform!tenon.transformation  # this in the position of the tenon within the context of the timber
+        # print("global_to1: " +global_to.to_s + "\n")
+        global_to.transform!timber.transformation  # now we've transformed it to global coordinates
+        # print("global_to2: " +global_to.to_s + "\n")
+        gto_transformation = Geom::Transformation.translation(global_to)
+        local_to.set!(0,0,0)
+        local_to.transform!(original.transformation.inverse * gto_transformation)
+        # print("local_to: " +local_to.to_s + "\n")
+        next unless original.bounds.contains?(global_to)  # for efficiency, narrow it down with this
+        # but that can still produce false positives (e.g. rafters), so preform this face test also:
+        # print("tenon within bounds:" + tenon.to_s + "\n")
 
-          #original.definition.entities.add_cpoint(local_to)
-          # UI.messagebox("pause1")
+        #original.definition.entities.add_cpoint(local_to)
 
-          face_test = false
-          original.definition.entities.each do |face|
-            next if not face.instance_of? Sketchup::Face
-            if face.classify_point(local_to) >= 1 and face.classify_point(local_to) <= 4 then
-              face_test = true
-              break
-            end
-          end
-
-          if face_test
-            # found one!  Now create the mortise in the new timber
-            # start by creating a temporary copy of the mortise in the correct position, but in global space
-            tmortise = model.entities.add_instance(tenon.definition, [0,0,0]) # starts at global origin
-            tmortise.transform!tenon.transformation
-            tmortise.transform!timber.transformation   # those two placed it where it belongs in glabal space
-            # now create the actual mortise in the new timber.
-            mortise = shop_dwg[0].definition.entities.add_instance(tmortise.definition,
-                      shop_dwg[0].transformation.inverse * tmortise.transformation)
-            # get rid of the temp
-            tmortise.erase!
-            if not reglue(mortise)
-              print("reglue failed.\n")
-            end
-            project_pegs(mortise, shop_dwg[0])
+        face_test = false
+        original.definition.entities.each do |face|
+          next unless face.instance_of? Sketchup::Face
+          if face.classify_point(local_to) >= 1 and face.classify_point(local_to) <= 4 then
+            face_test = true
+            break
           end
         end
-      end
-      # print ("joined.\n")
 
-      # add Direction labels if so configured
-      s = Sketchup.read_default("TF", "dir_labels", 1).to_i
-      lay_down_on_red(shop_dwg[0], s==1)
-        # offset it away from the rest of the model, and place it on the ground plane
-      bb = shop_dwg[0].bounds
-      tv = Geom::Vector3d.new(0, MODEL_OFFSET, (-1)*bb.corner(0).z)
+        if face_test
+          # found one!  Now create the mortise in the new timber
+          # start by creating a temporary copy of the mortise in the correct position, but in global space
+          tmortise = model.entities.add_instance(tenon.definition, [0,0,0]) # starts at global origin
+          tmortise.transform!tenon.transformation
+          tmortise.transform!timber.transformation   # those two placed it where it belongs in glabal space
+          # now create the actual mortise in the new timber.
+          mortise = shop_dwg[0].definition.entities.add_instance(tmortise.definition,
+                    shop_dwg[0].transformation.inverse * tmortise.transformation)
+          # get rid of the temp
+          tmortise.erase!
+          if not reglue(mortise)
+            print("reglue failed.\n")
+          end
+          project_pegs(mortise, shop_dwg[0])
+        end
+      end
+    end
+    # print ("joined.\n")
+
+    iso_timber = model.entities.add_instance(shop_dwg[0].definition, [-20,0,0])
+    iso_timber.make_unique
+    iso_timber.layer = tf_iso_layer
+
+    # add Direction labels if so configured
+    s = Sketchup.read_default("TF", "dir_labels", 1).to_i
+    lay_down_on_red(shop_dwg[0], s==1)
+    
+    # offset it away from the rest of the model, and place it on the ground plane
+    bb = shop_dwg[0].bounds
+    tv = Geom::Vector3d.new(0, MODEL_OFFSET, (-1)*bb.corner(0).z)
+    tt = Geom::Transformation.translation(tv)
+    shop_dwg[0].transform!(tt)
+
+    # Now make the other sides
+    rv = Geom::Vector3d.new(0,0,0)    #rotation vector
+
+    for i in 1..3
+      ### Dupe It
+      shop_dwg[i] = model.entities.add_instance(shop_dwg[i-1].definition, [0,0,0])
+      shop_dwg[i].layer = tf_shops_layer
+
+      # apply same transform to new comp.
+      shop_dwg[i].transformation = shop_dwg[i-1].transformation;
+
+      ### Offset it from the previous one
+      tv = Geom::Vector3d.new(0, 0, SIDE_SPACING)
       tt = Geom::Transformation.translation(tv)
-      shop_dwg[0].transform!(tt)
+      shop_dwg[i].transform!(tt)
 
-      # Now make the other sides
-      rv = Geom::Vector3d.new(0,0,0)    #rotation vector
+      ### Rotate it 90 degrees around the center of the component, parallel to red
+      rv.set!(1,0,0)
+        ra = roll_angle
+        rt = Geom::Transformation.rotation(shop_dwg[i].bounds.center, rv, ra)
+        shop_dwg[i].transform!(rt)
+      shop_dwg[i].make_unique
+    end
 
-      for i in 1..3
-        ### Dupe It
-        shop_dwg[i] = model.entities.add_instance(shop_dwg[i-1].definition, [0,0,0])
-        # apply same transform to new comp.
-        shop_dwg[i].transformation = shop_dwg[i-1].transformation;
-
-        ### Offset it from the previous one
-        tv = Geom::Vector3d.new(0, 0, SIDE_SPACING)
-        tt = Geom::Transformation.translation(tv)
-        shop_dwg[i].transform!(tt)
-
-        ### Rotate it 90 degrees around the center of the component, parallel to red
-        rv.set!(1,0,0)
-          ra = roll_angle
-          rt = Geom::Transformation.rotation(shop_dwg[i].bounds.center, rv, ra)
-          shop_dwg[i].transform!(rt)
-        shop_dwg[i].make_unique
-      end
-
-      ## find and hide any joints and direction lables on the back side (facing away from the camera)
-      puts("hiding backside joinery.")
-      if xray_mode
-        for i in 0..3
-          backmost = -10000
-          bf = nil
-          shop_dwg[i].definition.entities.each do |face|
-            next if not face.instance_of? Sketchup::Face
-            ctr = face.bounds.center
-            ctr.transform!shop_dwg[i].transformation
-            if ctr.y > backmost
-              backmost = ctr.y
-              bf = face
-            end
-          end
-          next if bf == nil  ## No Faces?  Don't do anything!
-          #print("backface: " + bf.to_s + "\n")
-          #print("bf plane: " + bf.plane.to_s + "\n")
-          shop_dwg[i].definition.entities.each do |joint|
-            if joint.instance_of? Sketchup::Text
-              if bf.classify_point(joint.point) >= 1 and bf.classify_point(joint.point) <= 4
-                #print("found text on backside\n")
-                joint.hidden = true
-              end;
-            end
-            next if not joint.instance_of? Sketchup::ComponentInstance
-            jnv = Geom::Vector3d.new(0,0,1)   # joint normal vector
-            jo = Geom::Point3d.new(0,0,0)
-            jnv.transform!joint.transformation
-            jo.transform!joint.transformation
-            if (bf.normal == jnv) or (bf.normal == jnv.reverse)
-              #print("normals match\n")
-              if bf.classify_point(jo) >= 1 and bf.classify_point(jo) <= 4
-                #print("joint origin on face\n")
-                joint.hidden = true
-              end
-            end
-          end
-        end # for each shop drawing
-      end  # if xray mode
-
-      puts("adjusting camera settings")
-      camera = Sketchup::Camera.new
-      camera.perspective = false
-      up = camera.up
-      up.set!(0, 0, 1)  # level
-      target = camera.target
-      target.set!(MODEL_OFFSET, 0, SIDE_SPACING * 1.5) # parallel to y axis
-      eye = camera.eye
-      eye.set!(MODEL_OFFSET, -1000, SIDE_SPACING * 1.5)
-      camera.set(eye, target, up)
-      view.camera = camera
-
-      if xray_mode then
-        model.rendering_options["ModelTransparency"]=true
-      end
-      model.rendering_options["DrawHorizon"]= false
-
-      ts = tm.strftime("Created on: %m/%d/%Y")
-      company_name = Sketchup.read_default("TF", "company_name", "Company Name")
-      if original.name == ""
-        timber_name = original.definition.name+"  (qty "+ original.definition.count_instances.to_s + ")"
-        drawing_name = original.definition.name + ".skp"
-      else
-        timber_name = original.name
-        drawing_name = original.name + ".skp"
-      end
-      tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
-      drawing_header = company_name + "  |  " + "Project: " + model.title + "  |  " + ts
-      drawing_title = timber_name + "  -  " + tsize
-      victims = Array.new
-      model.entities.each do |e|
-        next if shop_dwg.include? e
-        victims.push e
-      end
-      victims.each {|victim| victim.erase! if victim.valid?}
-
-      result = model.definitions.purge_unused
-      if not result
-        print("purge failed\n")
-      end
-      sel.clear
-      shop_dwg.each {|dwg| sel.add(dwg)}
-      view.zoom sel
-      sel.clear
-      mark_reference_faces(shop_dwg)
-      model.add_note(drawing_header, 0.25, 0.02)
-      model.add_note(drawing_title, 0.75, 0.02)
-      puts("showing file save dialog.  Drawing name: #{drawing_name}")
-      begin
-        sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
-        if sd_file
-          print("File name returned from save dialog: "+ sd_file + "\n")
-          while sd_file.index("\\")
-            sd_file["\\"]="/"
-          end
-          print("saving shop drawings as:"+sd_file + "\n")
-          if su_ver >= 14
-            save_status = model.save_copy(sd_file)
-          else
-            save_status = model.save(sd_file)
-          end
-          if not save_status
-            UI.messagebox("TF Rubies: Error saving Shop Drawings!")
-          end
-        else
-          UI.messagebox("Shop Drawings NOT saved!")
+    ## find and hide any joints and direction lables on the back side (facing away from the camera)
+    puts("hiding backside joinery.")
+    for i in 0..3
+      backmost = -10000
+      frontmost = 10000
+      bf = nil
+      ff = nil
+      shop_dwg[i].definition.entities.each do |face|
+        next unless face.instance_of? Sketchup::Face
+        ctr = face.bounds.center
+        ctr.transform!shop_dwg[i].transformation
+        if ctr.y > backmost
+          backmost = ctr.y
+          bf = face
         end
-      rescue
-        print("TF Rubies: Error creating shop drawings: " + $!.message + "\n")
-        UI.messagebox("TF Rubies: Error creating shop drawings: " + $!.message)
-      ensure
-        # now put everyting back the way we found it!
-        # puts "putting it back"
-        model.commit_operation
-        Sketchup.undo
-        model = Sketchup.active_model
-        view = model.active_view
-        cam = view.camera
-        cam.set(save_cam_eye, save_cam_target, save_cam_up)
-        cam.perspective = save_cam_persp
-        cam.fov = save_cam_fov
-        model.rendering_options["ModelTransparency"]= save_xray
-        model.rendering_options["DrawHorizon"]= save_sky
-        model.definitions.purge_unused
+        if ctr.y < frontmost
+          frontmost = ctr.y
+          ff = face
+        end
       end
+      next if bf == nil  ## No Faces?  Don't do anything!
+      #print("backface: " + bf.to_s + "\n")
+      #print("bf plane: " + bf.plane.to_s + "\n")
+      shop_dwg[i].definition.entities.each do |joint|
+        if joint.instance_of? Sketchup::Text
+          if bf.classify_point(joint.point) >= 1 and bf.classify_point(joint.point) <= 4
+            #print("found text on backside\n")
+            joint.hidden = true
+          end;
+        end
+        next unless joint.instance_of? Sketchup::ComponentInstance
+        jnv = Geom::Vector3d.new(0,0,1)   # joint normal vector
+        jo = Geom::Point3d.new(0,0,0)
+        jnv.transform!joint.transformation
+        jo.transform!joint.transformation
+        if (bf.normal == jnv) or (bf.normal == jnv.reverse)
+          #print("normals match\n")
+          if bf.classify_point(jo) >= 1 and bf.classify_point(jo) <= 4
+            #print("joint origin on face\n")
+            joint.hidden = true
+          end
+        end
+      end
+      if dir_label = ff.get_attribute(JAD, "Direction")
+        ctr = ff.bounds.center
+        shop_dwg[i].definition.entities.add_text(dir_label, ctr)
+      end
+    end # for each shop drawing
 
+    puts("adjusting camera settings")
+    camera = Sketchup::Camera.new
+    camera.perspective = false
+    up = camera.up
+    up.set!(0, 0, 1)  # level
+    target = camera.target
+    target.set!(MODEL_OFFSET, 0, SIDE_SPACING * 1.5) # parallel to y axis
+    eye = camera.eye
+    eye.set!(MODEL_OFFSET, -1000, SIDE_SPACING * 1.5)
+    camera.set(eye, target, up)
+    view.camera = camera
+
+    if xray_mode then
+      model.rendering_options["ModelTransparency"] = true
+    else
+      model.rendering_options["DrawBackEdges"] = true
+    end
+    model.rendering_options["DrawHorizon"] = false
+    model.rendering_options["BackgroundColor"] = "white"
+
+    ts = tm.strftime("Created on: %m/%d/%Y")
+    company_name = Sketchup.read_default("TF", "company_name", "Company Name")
+    if original.name == ""
+      timber_name = original.definition.name+"  (qty "+ original.definition.count_instances.to_s + ")"
+      drawing_name = original.definition.name + ".skp"
+    else
+      timber_name = original.name
+      drawing_name = original.name + ".skp"
+    end
+    tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
+    drawing_header = company_name + "  |  " + "Project: " + model.title + "  |  " + ts
+    drawing_title = timber_name + "  -  " + tsize
+    victims = Array.new
+    model.entities.each do |e|
+      next if shop_dwg.include? e 
+      next if e == iso_timber
+      victims.push e
+    end
+    victims.each {|victim| victim.erase! if victim.valid?}
+
+    result = model.definitions.purge_unused
+    if not result
+      print("purge failed\n")
+    end
+    sel.clear
+    shop_dwg.each {|dwg| sel.add(dwg)}
+    view.zoom(sel)
+    sel.clear
+    mark_reference_faces(shop_dwg, tf_shops_layer)
+    #model.add_note(drawing_header, 0.25, 0.02)
+    #model.add_note(drawing_title, 0.75, 0.02)
+
+    styles.update_selected_style
+    tf_shops_page.use_style = tf_shops_style
+    status = tf_shops_page.update
+    pages.selected_page = tf_shops_page
+
+    status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
+    tf_iso_style = styles["[Default Style]"]
+    tf_iso_style.name = "tf_iso_style"
+    tf_iso_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    styles.selected_style = tf_iso_style
+
+    tf_iso_layer.visible = true
+    tf_shops_layer.visible = false
+    sel.clear
+    sel.add iso_timber
+    view = model.active_view
+    cam = view.camera
+    cam.set(save_cam_eye, save_cam_target, save_cam_up)
+    cam.perspective = save_cam_persp
+    cam.fov = save_cam_fov
+    view.zoom(sel)
+    model.rendering_options["DrawHorizon"] = false
+    model.rendering_options["BackgroundColor"] = "white"
+
+    styles.update_selected_style
+    tf_iso_page.use_style = tf_iso_style
+    status = tf_iso_page.update
+    pages.selected_page = tf_shops_page
+
+    puts("showing file save dialog.  Drawing name: #{drawing_name}")
+    begin
+      sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
+      if sd_file
+        print("File name returned from save dialog: "+ sd_file + "\n")
+        while sd_file.index("\\")
+          sd_file["\\"]="/"
+        end
+        print("saving shop drawings as:"+sd_file + "\n")
+        if su_ver >= 14
+          save_status = model.save_copy(sd_file)
+        else
+          save_status = model.save(sd_file)
+        end
+        if not save_status
+          UI.messagebox("TF Rubies: Error saving Shop Drawings!")
+        end
+      else
+        UI.messagebox("Shop Drawings NOT saved!")
+      end
+    rescue
+      print("TF Rubies: Error creating shop drawings: " + $!.message + "\n")
+      UI.messagebox("TF Rubies: Error creating shop drawings: " + $!.message)
+    ensure
+      # now put everyting back the way we found it!
+      # puts "putting it back"
+      model.commit_operation
+      Sketchup.undo
+      model = Sketchup.active_model
+      pages.erase(tf_iso_page)
+      pages.erase(tf_shops_page)
+      view = model.active_view
+      cam = view.camera
+      cam.set(save_cam_eye, save_cam_target, save_cam_up)
+      cam.perspective = save_cam_persp
+      cam.fov = save_cam_fov
+      model.rendering_options["ModelTransparency"] = save_xray
+      model.rendering_options["DrawHorizon"] = save_sky
+      model.rendering_options["BackgroundColor"] = save_background
+      model.rendering_options["DrawBackEdges"] = save_back_edges
+
+      model.definitions.purge_unused
     end
   end  # make shop drawings
 
@@ -742,7 +814,7 @@ module CB_TF
     print("Comp Bounds:  w:"+ci.bounds.width.to_s+"\t d:"+ci.bounds.depth.to_s+"\t h:"+ci.bounds.height.to_s+"\n")
     dfn = ci.definition
     dfn.entities.each do |face|
-      next if not face.instance_of? Sketchup::Face
+      next unless face.instance_of? Sketchup::Face
       print("face: " + face.to_s+"\n")
       w = face.bounds.width
       h = face.bounds.height
@@ -759,9 +831,9 @@ module CB_TF
     no_dod_names = Array.new
     model = Sketchup.active_model
     model.active_entities.each do |timber|
-      next if not timber.instance_of? Sketchup::ComponentInstance
+      next unless timber.instance_of? Sketchup::ComponentInstance
       next if timber.hidden?
-      next if not timber.layer.visible?
+      next unless timber.layer.visible?
       next if timber.layer.name == COSMETIC_PEG_LAYER_NAME
       timber_count = timber_count + 1
       dod += timber.definition.get_attribute( JAD, "DoD", 0.0)
@@ -787,13 +859,13 @@ module CB_TF
 
   # verify that the selected component is already a tenon
   def CB_TF.sel_is_tenon
-    return false if not sel=selected_component
+    return false unless sel=selected_component
     return sel.definition.get_attribute( JAD, "tenon", false)
   end
 
   # verify that the selected face is already a peg
   def CB_TF.sel_is_peg
-    return false if not sel = selected_face
+    return false unless sel = selected_face
     return sel.get_attribute( JAD, "peg", false)
   end
 
@@ -807,13 +879,13 @@ module CB_TF
   ##  - shades inside faces of joint to indicate mortise depth
   ##
   def CB_TF.create_joint
-    return nil if not sel=selected_component
+    return nil unless sel=selected_component
     dfn = sel.definition
-    if not dfn.behavior.is2d?
+    unless dfn.behavior.is2d?
       #print ("was not set to glue - setting it now.\n")
       dfn.behavior.is2d=true
     end
-    if not dfn.behavior.cuts_opening?
+    unless dfn.behavior.cuts_opening?
       #print ("was not set to cut - setting it now.\n")
       dfn.behavior.cuts_opening=true
     end
@@ -823,7 +895,7 @@ module CB_TF
     tol = 0.00001
     bfs = Array.new
     dfn.entities.each do |face|
-      next if not face.instance_of? Sketchup::Face
+      next unless face.instance_of? Sketchup::Face
       p = face.plane
       x = p[0]
       y = p[1]
@@ -874,7 +946,7 @@ module CB_TF
   ##  or #show_pegs, which creates cosmetic pegs.
   ##
   def CB_TF.make_peg
-    return nil if not sel=selected_face
+    return nil unless sel=selected_face
     sel.set_attribute(JAD, "peg", true)
     print "peg made:", sel, "\n"
   end
@@ -925,7 +997,7 @@ module CB_TF
     defaults = [d0, d1, d2, d3, d4, d5, d6, d7]
     title = "TF Rubies Configuration"
       results = inputbox(prompts, defaults, dds, title)
-    return nil if not results
+    return nil unless results
     if results[0] == "Y" then
       Sketchup.write_default("TF", "xray", 1)
     else
