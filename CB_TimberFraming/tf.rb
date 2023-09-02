@@ -597,7 +597,9 @@ module CB_TF
 
     iso_timber = model.entities.add_instance(shop_dwg[0].definition, [-20,0,0])
     iso_timber.make_unique
+    iso_timber.name = "iso_timber"
     iso_timber.layer = tf_iso_layer
+    iso_timber.set_attribute(JAD, "project_name", model.title) # stash this here so we can find it in the shop drawings file
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i
