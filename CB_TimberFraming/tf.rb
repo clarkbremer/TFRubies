@@ -11,6 +11,7 @@ require 'CB_TimberFraming/assign_dod_tool.rb'
 require "CB_TimberFraming/version.rb"
 require "CB_TimberFraming/component_instance.rb"
 require "CB_TimberFraming/timber_list.rb"
+require "CB_TimberFraming/layout.rb"
 
 # All our stuff goes in this module to avoid namespace collisions with other plugins
 module CB_TF
@@ -268,123 +269,6 @@ module CB_TF
   end
 
 
-  ##############################################
-  ##
-  ##  *** EXPERIMENTAL ***
-  ##
-  ##  Add auto-dimensions to shop drawings
-  ##
-  def CB_TF.auto_dimensions(sel)
-    puts "Adding Dimensions to shop drawings"
-    if sel_is_tenon
-      CB_TF.auto_dimension_mortise(sel)
-      return
-    end
-    model = Sketchup.active_model
-    model.start_operation("add dimensions to shop drawings", true)
-    ci = sel
-    cd = ci.definition
-    lowest_z = 1000;
-
-    end_eps = []
-    cd.entities.each do |ent|
-      if ent.instance_of? Sketchup::Face
-        p = ent.bounds.center
-        p.transform!ci.transformation
-        lowest_z = p.z if p.z < lowest_z
-      end
-      next unless ent.instance_of? Sketchup::ComponentInstance
-      next unless ent.definition.get_attribute( JAD, "tenon", false)
-      next if ent.hidden?
-      puts "ent found: #{ent.definition.name}"
-      end_point = Geom::Point3d.new(0,0,0)
-      end_point.transform!ent.transformation  # origin of ent in timber space
-      puts "Origin of ent in timber coordinates: #{end_point.to_s}"
-      end_point.transform!ci.transformation  # origin of ent in global space
-      puts "Origin of ent in global coordinates: #{end_point.to_s}"
-      end_point.y = 0
-      end_eps << end_point
-    end
-
-    start_point = Geom::Point3d.new(0,0,0)
-    start_vertex = cd.entities.add_cpoint(start_point)
-    # start_vertex = vertex_at_origin(ci)
-    puts "start_vertex: #{start_vertex.position.inspect}"
-    start_point.transform!ci.transformation  # origin of timber in global space
-    puts "Origin of timber in global coordinates: #{start_point.to_s}"
-
-    start_point.y = 0
-    start_point.z = lowest_z
-    # remove duplicates (note that uniq! won't work, as these x are "Length" objects, not ints.)
-    end_eps.delete_if do |ep|
-      end_eps[end_eps.index(ep)+1..-1].any? { |other| ep == other }
-    end
-
-    # sort by X distance
-    end_eps.sort! do |a, b|
-      a.x <=> b.x
-    end
-
-    z_offset = -4
-    end_eps.each do |ep|
-      puts "Adding dimension linear with: "
-      puts "  start_point: #{start_point}"
-      puts "  end_point: #{ep}"
-      puts "  z_offset: #{z_offset}"
-      dim = model.active_entities.add_dimension_linear(start_point, ep, [0,0,z_offset])
-      z_offset -= 2
-    end
-
-    model.commit_operation
-    puts "done adding dimensions to shop drawings"
-  end
-
-  def CB_TF.auto_dimension_mortise(mortise)
-    mm = Sketchup.active_model
-    cd = mortise.definition
-    puts "Auto-dimension mortise: #{cd.name}"
-    td = mortise.parent
-    ti = mm.active_path.first
-
-    # are we looking "into" the mortise, or looking at a profile?
-    # Find frontmost face of timber
-
-    frontmost = 10000
-    ff = nil
-    ti.definition.entities.each do |face|
-      next unless face.instance_of? Sketchup::Face
-      ctr = face.bounds.center
-      ctr.transform!ti.transformation
-      if ctr.y < frontmost
-        frontmost = ctr.y
-        ff = face
-      end
-    end
-    puts "frontmost face of timber is #{ff}"
-    puts "    with y of #{ff.bounds.center.y}"
-
-    jnv = Geom::Vector3d.new(0,0,1)   # joint normal vector
-    jo = Geom::Point3d.new(0,0,0)  # joint origin
-    jnv.transform!mortise.transformation
-    jo.transform!mortise.transformation
-    if (ff.normal == jnv) or (ff.normal == jnv.reverse)
-      if ff.classify_point(jo) >= 1 and ff.classify_point(jo) <= 4
-        puts("normals match and attached to front - this joint is facing us.")
-        auto_dimension_mortise_facing(mortise, ti)
-      else
-        puts("normals match, but not attached to front - this joint is on the backside.")
-      end
-    else
-      puts("normals dont match - this joint is not facing us.")
-      auto_dimension_mortise_profile(mortise, ti)
-    end
-  end
-
-  def CB_TF.auto_dimension_mortise_facing(mortise, ti)
-  end
-
-  def CB_TF.auto_dimension_mortise_profile(mortise, ti)
-  end
 
   ##########################################################
   ##  Make Shop Drawings
@@ -418,11 +302,23 @@ module CB_TF
   		end
   	end
 
+    # so we can put it all back the way we found it.
+    view = model.active_view
+    cam = view.camera
+    save_cam = Sketchup::Camera.new cam.eye, cam.target, cam.up
+    
+    save_xray = model.rendering_options["ModelTransparency"]
+    save_sky = model.rendering_options["DrawHorizon"]
+    save_background = model.rendering_options["BackgroundColor"]
+    save_back_edges = model.rendering_options["DrawBackEdges"]
+
     model.start_operation("make shop drawings", true)
-    # create pages (scenes) and layers (tags) for shops and iso
+    # create styles, pages (scenes) and layers (tags) for shops and iso
     pages = model.pages
     tf_shops_page = pages.add "tf_shops"
+    tf_shops_page.transition_time = 0
     tf_iso_page = pages.add "tf_iso"
+    tf_iso_page.transition_time = 0
     layers = model.layers
     tf_shops_layer = layers.add "tf_shops_layer"
     tf_iso_layer = layers.add "tf_iso_layer"
@@ -430,26 +326,20 @@ module CB_TF
     tf_iso_layer.visible = false
 
     styles = model.styles
-    status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
-    tf_shops_style = styles["[Default Style]"]
-    tf_shops_style.name = "tf_shops_style"
-    tf_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    tf_shops_style = nil
+    styles.each do |s|
+      tf_shops_style = s if s.name == "tf_shops_style"
+    end
+    unless tf_shops_style
+      puts "tf_shops_style not found.  Adding it."
+      status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
+      tf_shops_style = styles["[Default Style]"]
+      tf_shops_style.name = "tf_shops_style"
+      tf_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    end
     styles.selected_style = tf_shops_style
 
     sel = model.selection
-    view = model.active_view
-
-    # so we can put it all back the way we found it.
-    cam = view.camera
-    save_cam_eye = cam.eye
-    save_cam_target = cam.target
-    save_cam_up = cam.up
-    save_cam_persp = cam.perspective?
-    save_cam_fov = cam.fov
-    save_xray = model.rendering_options["ModelTransparency"]
-    save_sky = model.rendering_options["DrawHorizon"]
-    save_background = model.rendering_options["BackgroundColor"]
-    save_back_edges = model.rendering_options["DrawBackEdges"]
 
   	# crashes second time through
     #   pgs = Array.new
@@ -741,10 +631,17 @@ module CB_TF
     status = tf_shops_page.update
     pages.selected_page = tf_shops_page
 
-    status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
-    tf_iso_style = styles["[Default Style]"]
-    tf_iso_style.name = "tf_iso_style"
-    tf_iso_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    tf_iso_style = nil
+    styles.each do |s|
+      tf_iso_style = s if s.name == "tf_iso_style"
+    end
+    unless tf_iso_style
+      puts "tf_iso_style not found.  Adding it."
+      status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
+      tf_iso_style = styles["[Default Style]"]
+      tf_iso_style.name = "tf_iso_style"
+      tf_iso_style.description = "Auto-added by TF Extensions for Shop Drawings"
+    end
     styles.selected_style = tf_iso_style
 
     tf_iso_layer.visible = true
@@ -752,10 +649,7 @@ module CB_TF
     sel.clear
     sel.add iso_timber
     view = model.active_view
-    cam = view.camera
-    cam.set(save_cam_eye, save_cam_target, save_cam_up)
-    cam.perspective = save_cam_persp
-    cam.fov = save_cam_fov
+    view.camera = save_cam
     view.zoom(sel)
     model.rendering_options["DrawHorizon"] = false
     model.rendering_options["BackgroundColor"] = "white"
@@ -790,17 +684,14 @@ module CB_TF
       UI.messagebox("TF Rubies: Error creating shop drawings: " + $!.message)
     ensure
       # now put everyting back the way we found it!
-      # puts "putting it back"
+      puts "putting it back"
       model.commit_operation
       Sketchup.undo
       model = Sketchup.active_model
       pages.erase(tf_iso_page)
       pages.erase(tf_shops_page)
       view = model.active_view
-      cam = view.camera
-      cam.set(save_cam_eye, save_cam_target, save_cam_up)
-      cam.perspective = save_cam_persp
-      cam.fov = save_cam_fov
+      view.camera = save_cam
       model.rendering_options["ModelTransparency"] = save_xray
       model.rendering_options["DrawHorizon"] = save_sky
       model.rendering_options["BackgroundColor"] = save_background
@@ -1150,6 +1041,7 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Count Joints and Timbers") {CB_TF.count_joints}
   tf_menu.add_item("Show Pegs") {CB_TF.show_pegs}
   tf_menu.add_item("DoD Report") {CB_TF.dod_report}
+  tf_menu.add_item("Send Shops to Layout") {CB_TF.send_shops_to_layout}
   peg_tool_item = tf_menu.add_item("TF Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
   tf_menu.set_validation_proc(peg_tool_item) {CB_TF.peg_tool_valid_proc}
   stretch_tool_item = tf_menu.add_item("TF Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
