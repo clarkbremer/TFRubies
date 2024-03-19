@@ -50,6 +50,9 @@ module CB_TF
         puts "layout_file_name: #{layout_file_name}"
         if layout_file_name && File.exists?(layout_file_name)
             doc =  Layout::Document.open(layout_file_name)
+            default_layer = nil
+            layers = doc.layers
+            layers.each { |layer| default_layer = layer if layer.name == "Default" }
         else
             puts "doc not found, creating new"
             template_file_name = UI.openpanel("Choose a Layout Template", "", "Layout|*.layout||")
@@ -59,15 +62,18 @@ module CB_TF
             page = doc.pages.first
             page.name = "Cover Page"
             pi = doc.page_info
-            layer = doc.layers.add(model.title)
-            layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
-
+            # layer = doc.layers.add(model.title)
+            # layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
+            default_layer = nil
+            layers = doc.layers
+            layers.each { |layer| default_layer = layer if layer.name == "Default" }
+    
             anchor = Geom::Point2d.new(pi.width / 2, pi.height / 2)
             text = Layout::FormattedText.new("#{project_name} Shop Drawings", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
             style = text.style
             style.font_size = 36.0
             text.style = style
-            doc.add_entity(text, layer, page)
+            doc.add_entity(text, default_layer, page)
             doc.save(layout_file_name)
         end
 
@@ -85,9 +91,9 @@ module CB_TF
         end
 
         page = pages.add(model.title)
-        layer = doc.layers.add(model.title)
-        layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
-        page.set_layer_visibility(layer, true)
+        # layer = doc.layers.add(model.title)
+        # layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
+        # page.set_layer_visibility(layer, true)
         pi = doc.page_info
 
         # add iso viewport
@@ -95,7 +101,7 @@ module CB_TF
         view_bounds = Geom::Bounds2d.new(14.125, 0.375, 2.0, 10.0)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_iso_scene + 1
-        doc.add_entity( viewport, layer, page )
+        doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
         viewport.render if viewport.render_needed?
 
@@ -103,7 +109,7 @@ module CB_TF
         view_bounds = Geom::Bounds2d.new(1.125, 0.375, 13.0, 8.0)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_shops_scene + 1
-        doc.add_entity( viewport, layer, page )
+        doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
         viewport.render if viewport.render_needed?
 
@@ -111,7 +117,7 @@ module CB_TF
         unless qty == ""
             anchor = Geom::Point2d.new(1, 1)
             text = Layout::FormattedText.new("Qty: #{qty}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
-            doc.add_entity( text, layer, page )
+            doc.add_entity( text, default_layer, page )
             # auto_texts = doc.auto_text_definitions
             # auto_texts.each do |auto_text|
             #     if auto_text.tag== "<Qty>"

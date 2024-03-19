@@ -622,7 +622,7 @@ module CB_TF
         #            A B C D E F
         tl_file << ",,,,,,=SUM(G#{row-nl.length}:G#{row-1})\n"
         row+=1
-        tl_file << "\n" << "Un-named components:\n"
+        tl_file << "\n" << " Scantlings:\n"
         row+=2
 
         if metric
