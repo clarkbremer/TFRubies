@@ -274,7 +274,7 @@ module CB_TF
       print("exporting\n")
       case file_format
       when "X"
-        worksheet.cells(row,1).value = "Named Timbers"
+        worksheet.cells(row,1).value = "Timbers"
         worksheet.cells(row,1).font.bold = true
         worksheet.cells(row,1).font.italic = true
         row+=1
@@ -332,7 +332,7 @@ module CB_TF
         total_section1_row = row
 
         row+=2
-        worksheet.cells(row,1).value = "Unnamed Timbers"
+        worksheet.cells(row,1).value = "Scantlings"
         worksheet.cells(row,1).font.bold = true
         worksheet.cells(row,1).font.italic = true
         row+=1

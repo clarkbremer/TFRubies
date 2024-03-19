@@ -64,7 +64,7 @@ module CB_TF
         Sketchup.vcb_label = ""
         
         self.reset(nil)
-    end
+end
 
     # deactivate is called when the tool is deactivated because
     # a different tool was selected

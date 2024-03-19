@@ -1,11 +1,11 @@
-##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
-
+##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
 module CB_TF
     def CB_TF.send_shops_to_layout
         model = Sketchup.active_model
         scenes = model.pages
         tf_iso_scene = nil
         tf_shops_scene = nil
+        qty = ""
         scenes.each_with_index do |scene, i|
             if scene.name == "tf_shops"
                 tf_shops_scene = i
@@ -25,6 +25,8 @@ module CB_TF
         model.entities.each do |ent|
             if ent.name == "iso_timber"
                 project_name = ent.get_attribute(JAD, "project_name")
+                qty = ent.get_attribute(JAD, "qty")
+                puts ("send_shops_to_layout qty= #{qty}")
                 break
             end
         end
@@ -43,7 +45,7 @@ module CB_TF
             end
         end
 
-        layout_file_name = "#{File.dirname(model.path)}\\#{project_name}.layout"
+        layout_file_name = File.join(File.dirname(model.path), "#{project_name}.layout")
 
         puts "layout_file_name: #{layout_file_name}"
         if layout_file_name && File.exists?(layout_file_name)
@@ -89,30 +91,34 @@ module CB_TF
         pi = doc.page_info
 
         # add iso viewport
-        view_bounds = Geom::Bounds2d.new(
-        pi.left_margin + (pi.width * 0.75),  
-        pi.top_margin + 0.1,
-        (pi.width / 5) - (pi.left_margin + pi.right_margin),
-        pi.height - (pi.top_margin + pi.bottom_margin) - 0.2
-        )
+        # puts "pi: lm: #{pi.left_margin}, tm: #{pi.top_margin}, w: #{pi.width}, h:#{pi.height}"
+        view_bounds = Geom::Bounds2d.new(14.125, 0.375, 2.0, 10.0)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_iso_scene + 1
+        doc.add_entity( viewport, layer, page )
+        viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
+        viewport.render if viewport.render_needed?
+
+        # add shops viewport
+        view_bounds = Geom::Bounds2d.new(1.125, 0.375, 13.0, 8.0)
+        viewport = Layout::SketchUpModel.new(model.path, view_bounds)
+        viewport.current_scene = tf_shops_scene + 1
         doc.add_entity( viewport, layer, page )
         viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
         viewport.render if viewport.render_needed?
 
-        # add shops viewport
-        view_bounds = Geom::Bounds2d.new(
-        pi.left_margin + 1,  
-        pi.top_margin + 0.1,
-        (pi.width * 3 / 4) - (pi.left_margin + pi.right_margin),
-        ( pi.height - (pi.top_margin + pi.bottom_margin) ) * 0.75
-        )
-        viewport = Layout::SketchUpModel.new(model.path, view_bounds)
-        viewport.current_scene = tf_shops_scene + 1
-        doc.add_entity( viewport, layer, page )
-        viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
-        viewport.render if viewport.render_needed?
+        # set qty if present
+        unless qty == ""
+            anchor = Geom::Point2d.new(1, 1)
+            text = Layout::FormattedText.new("Qty: #{qty}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
+            doc.add_entity( text, layer, page )
+            # auto_texts = doc.auto_text_definitions
+            # auto_texts.each do |auto_text|
+            #     if auto_text.tag== "<Qty>"
+            #         auto_text.custom_text = qty
+            #     end
+            # end
+        end
 
         # add_auto_dimensions(viewport)
 
@@ -122,6 +128,7 @@ module CB_TF
             UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
             return
         end
+        puts "#{model.title} added to #{project_name}"
         UI.messagebox("Page #{model.title} added to #{project_name}")
 
     end

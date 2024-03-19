@@ -280,7 +280,7 @@ module CB_TF
   ##  Must have one and only one component selected.
   ##
   ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
-  ##
+  ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
     puts "Sketchup Version: #{su_ver}"
@@ -305,7 +305,7 @@ module CB_TF
     # so we can put it all back the way we found it.
     view = model.active_view
     cam = view.camera
-    save_cam = Sketchup::Camera.new cam.eye, cam.target, cam.up
+    save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
     
     save_xray = model.rendering_options["ModelTransparency"]
     save_sky = model.rendering_options["DrawHorizon"]
@@ -489,7 +489,9 @@ module CB_TF
     iso_timber.make_unique
     iso_timber.name = "iso_timber"
     iso_timber.layer = tf_iso_layer
-    iso_timber.set_attribute(JAD, "project_name", model.title) # stash this here so we can find it in the shop drawings file
+    iso_timber.set_attribute(JAD, "project_name", model.title) # stash these here so we can find them in the shop drawings file
+    qty = original.definition.count_instances
+    iso_timber.set_attribute(JAD, "qty", qty.to_s)
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i
