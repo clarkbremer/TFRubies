@@ -276,7 +276,7 @@ module CB_TF
   ##  Copies tenon joinery from other timbers into this one as mortises.
   ##
   ##  Make 4 copies of the selected timber, each rotated 90 deg
-  ##  from each other to show all 4 faces, in xray mode, parralel perspective.
+  ##  from each other to show all 4 faces, parralel perspective.
   ##  Must have one and only one component selected.
   ##
   ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
@@ -307,7 +307,6 @@ module CB_TF
     cam = view.camera
     save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
     
-    save_xray = model.rendering_options["ModelTransparency"]
     save_sky = model.rendering_options["DrawHorizon"]
     save_background = model.rendering_options["BackgroundColor"]
     save_back_edges = model.rendering_options["DrawBackEdges"]
@@ -348,12 +347,6 @@ module CB_TF
 
     tdims = Array.new
     min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
-    s = Sketchup.read_default("TF", "xray", 1).to_i
-    if s==1 then
-      xray_mode=true
-    else
-      xray_mode=false
-    end
 
     s = Sketchup.read_default("TF", "metric", 0).to_i
     if s == 1
@@ -588,11 +581,7 @@ module CB_TF
     camera.set(eye, target, up)
     view.camera = camera
 
-    if xray_mode then
-      model.rendering_options["ModelTransparency"] = true
-    else
-      model.rendering_options["DrawBackEdges"] = true
-    end
+    model.rendering_options["DrawBackEdges"] = true
     model.rendering_options["DrawHorizon"] = false
     model.rendering_options["BackgroundColor"] = "white"
 
@@ -694,7 +683,6 @@ module CB_TF
       pages.erase(tf_shops_page)
       view = model.active_view
       view.camera = save_cam
-      model.rendering_options["ModelTransparency"] = save_xray
       model.rendering_options["DrawHorizon"] = save_sky
       model.rendering_options["BackgroundColor"] = save_background
       model.rendering_options["DrawBackEdges"] = save_back_edges
@@ -860,7 +848,7 @@ module CB_TF
   # Display configuration dialog.  TODO:  Use webdialog
   #
   def CB_TF.tf_configure
-    p0 = "Shop drawings in XRay Mode?"
+    p0 = "Show Quantity on Shop drawings?"
     p1 = "Directional labels on shop drawings?"
     p2 = "Round up dimensions on timber list?"
     p3 = "Timber list as CSV, Text or Xcel?"
@@ -880,7 +868,7 @@ module CB_TF
     dd5 = %w[U R].join("|")
     dds = [dd0, dd1, dd2, dd3, dd4, dd5]
 
-    d0 = ny[Sketchup.read_default("TF", "xray", 1)]
+    d0 = ny[Sketchup.read_default("TF", "qty", 1)]
     d1 = ny[Sketchup.read_default("TF", "dir_labels", 1)]
     d2 = ny[Sketchup.read_default("TF", "roundup", 1)]
     d3 = Sketchup.read_default("TF", "list_file_format", "C")
@@ -894,9 +882,9 @@ module CB_TF
       results = inputbox(prompts, defaults, dds, title)
     return nil unless results
     if results[0] == "Y" then
-      Sketchup.write_default("TF", "xray", 1)
+      Sketchup.write_default("TF", "qty", 1)
     else
-        Sketchup.write_default("TF", "xray", 0)
+        Sketchup.write_default("TF", "qty", 0)
     end
     if results[1] == "Y" then
       Sketchup.write_default("TF", "dir_labels", 1)

@@ -20,7 +20,7 @@ module CB_TF
             return
         end
 
-        # find the iso_timber, which is where we stashed the project name
+        # find the iso_timber, which is where we stashed the project name and qty
         project_name = nil
         model.entities.each do |ent|
             if ent.name == "iso_timber"
@@ -113,17 +113,21 @@ module CB_TF
         viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
         viewport.render if viewport.render_needed?
 
-        # set qty if present
-        unless qty == ""
-            anchor = Geom::Point2d.new(1, 1)
-            text = Layout::FormattedText.new("Qty: #{qty}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
-            doc.add_entity( text, default_layer, page )
-            # auto_texts = doc.auto_text_definitions
-            # auto_texts.each do |auto_text|
-            #     if auto_text.tag== "<Qty>"
-            #         auto_text.custom_text = qty
-            #     end
-            # end
+        # set qty if present and so configured
+        q = Sketchup.read_default("TF", "qty", 1).to_i
+        if q==1 then
+            unless qty == ""
+                anchor = Geom::Point2d.new(1, 0.3)
+                text = Layout::FormattedText.new("Qty: #{qty}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
+                doc.add_entity( text, default_layer, page )
+                
+                # auto_texts = doc.auto_text_definitions  # this doesn't work, as the auto_text is global across all pages.
+                # auto_texts.each do |auto_text|
+                #     if auto_text.tag== "<Qty>"
+                #         auto_text.custom_text = qty
+                #     end
+                # end
+            end
         end
 
         # add_auto_dimensions(viewport)
