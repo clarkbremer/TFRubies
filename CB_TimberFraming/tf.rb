@@ -226,13 +226,13 @@ module CB_TF
         z = topmost
         #print("\tx="+x.to_s+" y="+y.to_s+" z="+z.to_s+"\n")
         pt1 = Geom::Point3d.new(x, y, z)
-        pt2 = Geom::Point3d.new(x-1, y, z+2)
-        pt3 = Geom::Point3d.new(x+1, y, z+2)
+        pt2 = Geom::Point3d.new(x-2, y, z+2)
+        pt3 = Geom::Point3d.new(x+2, y, z+2)
         grp = model.entities.add_group
         grp.layer = layer
         ref_mark = grp.entities.add_face(pt1, pt2, pt3)
-        ref_mark.material = [0,0,0] # paint it black
-        ref_mark.back_material = [0,0,0]
+        ref_mark.material = top.material # paint it same as refernce face
+        ref_mark.back_material = top.material
         #print("ref_mark face:"+ref_mark.to_s+"\n")
       end
       if bottom.material # is the bottom painted with something?
@@ -245,13 +245,13 @@ module CB_TF
         z = bottommost
         #print("\tx="+x.to_s+" y="+y.to_s+" z="+z.to_s+"\n")
         pt1 = Geom::Point3d.new(x, y, z)
-        pt2 = Geom::Point3d.new(x-1, y, z-2)
-        pt3 = Geom::Point3d.new(x+1, y, z-2)
+        pt2 = Geom::Point3d.new(x-2, y, z-2)
+        pt3 = Geom::Point3d.new(x+2, y, z-2)
         grp = model.entities.add_group
         grp.layer = layer
         ref_mark = grp.entities.add_face(pt1, pt2, pt3)
-        ref_mark.material = [0,0,0] # paint it black
-        ref_mark.back_material = [0,0,0]
+        ref_mark.material = bottom.material # paint it same as reference face
+        ref_mark.back_material = bottom.material
         #print("ref_mark face:"+ref_mark.to_s+"\n")
       end
 
