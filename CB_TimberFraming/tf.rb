@@ -18,7 +18,6 @@ module CB_TF
   COSMETIC_PEG_LAYER_NAME = "Pegs for Presentation"
   JAD = "TF_Joinery"
   MODEL_OFFSET = 0
-  SIDE_SPACING = 30
 
   # helper method to make sure that one and only one component is selected
   def CB_TF.selected_component
@@ -279,12 +278,13 @@ module CB_TF
   ##  from each other to show all 4 faces, parralel perspective.
   ##  Must have one and only one component selected.
   ##
-  ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
   ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
     puts "Sketchup Version: #{su_ver}"
     tm = Time.now
+    side_spacing = Sketchup.read_default("TF", "side_spacing", "30")
+
     if not original.instance_of? Sketchup::ComponentInstance
       UI.messagebox "TF Rubies: Must have one and only one timber selected"
       return
@@ -306,7 +306,6 @@ module CB_TF
     view = model.active_view
     cam = view.camera
     save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
-    
     save_sky = model.rendering_options["DrawHorizon"]
     save_background = model.rendering_options["BackgroundColor"]
     save_back_edges = model.rendering_options["DrawBackEdges"]
@@ -422,7 +421,6 @@ module CB_TF
     global_to = Geom::Point3d.new(0,0,0)    # global tenon origin
     local_to = Geom::Point3d.new(0,0,0)    # local tenon origin
 
-
     # every comp inst in the top level of the model is a potential timber
     model.active_entities.each do |timber|
       next unless timber.instance_of? Sketchup::ComponentInstance
@@ -508,7 +506,7 @@ module CB_TF
       shop_dwg[i].transformation = shop_dwg[i-1].transformation;
 
       ### Offset it from the previous one
-      tv = Geom::Vector3d.new(0, 0, SIDE_SPACING)
+      tv = Geom::Vector3d.new(0, 0, side_spacing)
       tt = Geom::Transformation.translation(tv)
       shop_dwg[i].transform!(tt)
 
@@ -569,15 +567,16 @@ module CB_TF
       end
     end # for each shop drawing
 
+
     puts("adjusting camera settings")
     camera = Sketchup::Camera.new
     camera.perspective = false
     up = camera.up
     up.set!(0, 0, 1)  # level
     target = camera.target
-    target.set!(MODEL_OFFSET, 0, SIDE_SPACING * 1.5) # parallel to y axis
+    target.set!(MODEL_OFFSET, 0, side_spacing * 1.5) # parallel to y axis
     eye = camera.eye
-    eye.set!(MODEL_OFFSET, -1000, SIDE_SPACING * 1.5)
+    eye.set!(MODEL_OFFSET, -1000, side_spacing * 1.5)
     camera.set(eye, target, up)
     view.camera = camera
 
@@ -601,6 +600,7 @@ module CB_TF
     model.entities.each do |e|
       next if shop_dwg.include? e 
       next if e == iso_timber
+      next if e.instance_of? Sketchup::SectionPlane # because undo does not fix this
       victims.push e
     end
     victims.each {|victim| victim.erase! if victim.valid?}
@@ -848,14 +848,15 @@ module CB_TF
   # Display configuration dialog.  TODO:  Use webdialog
   #
   def CB_TF.tf_configure
-    p0 = "Show Quantity on Shop drawings?"
-    p1 = "Directional labels on shop drawings?"
+    p0 = "Show Quantity on Shop Drawings?"
+    p1 = "Directional labels on Shop Drawings?"
     p2 = "Round up dimensions on timber list?"
     p3 = "Timber list as CSV, Text or Xcel?"
     p4 = "English or Metric?"
-    p5 = "Unwrap or Roll shop drawings?"
-    p6 = "Minimum extra timber length for timber list:"
-    p7 = "Company Name:"
+    p5 = "Unwrap or Roll Shop Drawings?"
+    p6 = "Side Spacing on Shop Drawings:"
+    p7 = "Minimum extra timber length for timber list:"
+    p8 = "Company Name:"
 
     ny = ["N", "Y"]
     em = ["E", "M"]
@@ -874,10 +875,11 @@ module CB_TF
     d3 = Sketchup.read_default("TF", "list_file_format", "C")
     d4 = em[Sketchup.read_default("TF", "metric", 0)]
     d5 = ru[Sketchup.read_default("TF", "roll", 0)]
-    d6 = Sketchup.read_default("TF", "min_extra_timber_length", "24")
-    d7 = Sketchup.read_default("TF", "company_name", "")
-    prompts = [p0, p1, p2, p3, p4, p5, p6, p7]
-    defaults = [d0, d1, d2, d3, d4, d5, d6, d7]
+    d6 = Sketchup.read_default("TF", "side_spacing", "30")
+    d7 = Sketchup.read_default("TF", "min_extra_timber_length", "24")
+    d8 = Sketchup.read_default("TF", "company_name", "")
+    prompts = [p0, p1, p2, p3, p4, p5, p6, p7, p8]
+    defaults = [d0, d1, d2, d3, d4, d5, d6, d7, d8]
     title = "TF Rubies Configuration"
       results = inputbox(prompts, defaults, dds, title)
     return nil unless results
@@ -915,8 +917,9 @@ module CB_TF
         Sketchup.write_default("TF", "roll", 0)
     end
 
-    Sketchup.write_default("TF", "min_extra_timber_length", results[6].to_i )
-    Sketchup.write_default("TF", "company_name", results[7])
+    Sketchup.write_default("TF", "side_spacing", results[6].to_i )
+    Sketchup.write_default("TF", "min_extra_timber_length", results[7].to_i )
+    Sketchup.write_default("TF", "company_name", results[8])
   end
 
   # Report the version
