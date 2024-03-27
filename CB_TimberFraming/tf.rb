@@ -18,6 +18,7 @@ module CB_TF
   COSMETIC_PEG_LAYER_NAME = "Pegs for Presentation"
   JAD = "TF_Joinery"
   MODEL_OFFSET = 0
+  TOL =  0.00001
 
   # helper method to make sure that one and only one component is selected
   def CB_TF.selected_component
@@ -267,8 +268,6 @@ module CB_TF
     attr_reader :face, :ctr
   end
 
-
-
   ##########################################################
   ##  Make Shop Drawings
   ##
@@ -483,6 +482,7 @@ module CB_TF
     iso_timber.set_attribute(JAD, "project_name", model.title) # stash these here so we can find them in the shop drawings file
     qty = original.definition.count_instances
     iso_timber.set_attribute(JAD, "qty", qty.to_s)
+    iso_timber = remove_stray_faces(iso_timber)
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i
@@ -521,11 +521,13 @@ module CB_TF
     ## find and hide any joints and direction lables on the back side (facing away from the camera)
     puts("hiding backside joinery.")
     for i in 0..3
+      shop_instance = shop_dwg[i]
+      shop_definition = shop_instance.definition
       backmost = -10000
       frontmost = 10000
       bf = nil
       ff = nil
-      shop_dwg[i].definition.entities.each do |face|
+      shop_definition.entities.each do |face|
         next unless face.instance_of? Sketchup::Face
         ctr = face.bounds.center
         ctr.transform!shop_dwg[i].transformation
@@ -541,7 +543,7 @@ module CB_TF
       next if bf == nil  ## No Faces?  Don't do anything!
       #print("backface: " + bf.to_s + "\n")
       #print("bf plane: " + bf.plane.to_s + "\n")
-      shop_dwg[i].definition.entities.each do |joint|
+      shop_definition.entities.each do |joint|
         if joint.instance_of? Sketchup::Text
           if bf.classify_point(joint.point) >= 1 and bf.classify_point(joint.point) <= 4
             #print("found text on backside\n")
@@ -549,8 +551,9 @@ module CB_TF
           end;
         end
         next unless joint.instance_of? Sketchup::ComponentInstance
+        next if is_2d?(joint.definition)  # things like through tenon tips
         jnv = Geom::Vector3d.new(0,0,1)   # joint normal vector
-        jo = Geom::Point3d.new(0,0,0)
+        jo = Geom::Point3d.new(0,0,0)     # joint origin
         jnv.transform!joint.transformation
         jo.transform!joint.transformation
         if (bf.normal == jnv) or (bf.normal == jnv.reverse)
@@ -563,10 +566,13 @@ module CB_TF
       end
       if dir_label = ff.get_attribute(JAD, "Direction")
         ctr = ff.bounds.center
-        shop_dwg[i].definition.entities.add_text(dir_label, ctr)
+        shop_definition.entities.add_text(dir_label, ctr)
       end
     end # for each shop drawing
 
+    for i in 0..3
+      shop_dwg[i] = remove_stray_faces(shop_dwg[i])
+    end
 
     puts("adjusting camera settings")
     camera = Sketchup::Camera.new
@@ -691,6 +697,36 @@ module CB_TF
     end
   end  # make shop drawings
 
+  def CB_TF.is_2d?(dd)
+    bounds = dd.bounds
+    return (bounds.depth <= TOL || bounds.height <= TOL || bounds.width <= TOL)
+  end
+
+  def CB_TF.remove_stray_faces(shop_instance)
+    shop_definition = shop_instance.definition
+    shop_definition.entities.each do |joint|
+      next unless joint.instance_of? Sketchup::ComponentInstance
+      next if joint.hidden?
+      next if is_2d?(joint.definition)
+      joint.explode
+    end
+    passes = 0
+    loop do 
+      victims = []
+      shop_definition.entities.each do |edge|
+        next unless edge.instance_of? Sketchup::Edge
+        if edge.faces.count <= 1  
+          victims.push edge
+        end
+      end
+      passes+=1
+      break if victims.empty? or passes >=3
+      shop_definition.entities.erase_entities(victims)
+    end
+    # puts "Remove stray faces made #{passes} passes"
+    return shop_instance
+  end
+
   # debug method
   def test_bounds
     ci = selected_component
@@ -775,7 +811,6 @@ module CB_TF
     dfn.set_attribute(JAD, "tenon", true)
     #print "tenon made:", sel, "\n"
 
-    tol = 0.00001
     bfs = Array.new
     dfn.entities.each do |face|
       next unless face.instance_of? Sketchup::Face
@@ -789,7 +824,7 @@ module CB_TF
       #if x.abs < tol then print("\t0\n") else print("\t"+ x.to_s+"\n") end
       #if y.abs < tol then print("\t0\n") else print("\t"+ y.to_s+"\n") end
 
-      if z.abs < tol
+      if z.abs < TOL
         #print("\t0\n")
       else
         # note that Z axis could be either into or out of the mortise.
@@ -806,7 +841,7 @@ module CB_TF
         face.material = [g,g,g]
       end
 
-      if x.abs < tol and y.abs < tol and o.abs < tol
+      if x.abs < TOL and y.abs < TOL and o.abs < TOL
         #print("Found and removing a base face: " + face.to_s + "\n")
         bfs.push face
       end
