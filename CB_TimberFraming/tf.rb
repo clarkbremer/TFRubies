@@ -253,7 +253,15 @@ module CB_TF
     #print("\n")
   end # mark_reference_faces
 
+  class ExtremeFace
+    def initialize(face, ctr)
+      @face = face
+      @ctr = ctr
+    end
+    attr_reader :face, :ctr
+  end
 
+  
   ##########################################################
   ##  Make Shop Drawings
   ##
