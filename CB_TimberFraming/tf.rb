@@ -89,9 +89,7 @@ module CB_TF
     # check all the faces of the mortise to see if the peg is on one of them
     on_mortise_face = false
     if tpc then  # don't bother if we hit empty space
-      mortise.definition.entities.each do |face|
-        next unless face.instance_of? Sketchup::Face
-
+      mortise.definition.entities.grep(Sketchup::Face) do |face|
         if face.classify_point(mpc) >= 1 and face.classify_point(mpc) <= 4 then
           on_mortise_face = true
         end
@@ -122,8 +120,7 @@ module CB_TF
   def CB_TF.project_pegs(mortise, timber)
     model = Sketchup.active_model
 
-    mortise.definition.entities.each do |peg|
-      next unless peg.instance_of? Sketchup::Face
+    mortise.definition.entities.grep(Sketchup::Face) do |peg|
       next unless peg.get_attribute( JAD, "peg", false)
   #    print("found a peg: " + peg.to_s + "\n")
       cpt = get_peg_center(mortise, timber, peg)
@@ -150,15 +147,12 @@ module CB_TF
         f.layer = "Layer0"
         f.pushpull(-1)
       end
-      model.active_entities.each do |timber|
-        next unless timber.instance_of? Sketchup::ComponentInstance
+      model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
         next if timber.hidden?
         next unless timber.layer.visible?
-        timber.definition.entities.each do |tenon|
-          next unless tenon.instance_of? Sketchup::ComponentInstance
+        timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
           if tenon.definition.get_attribute( JAD, "tenon", false) then
-            tenon.definition.entities.each do |peg_face|
-              next unless peg_face.instance_of? Sketchup::Face
+            tenon.definition.entities.grep(Sketchup::Face) do |peg_face|
               next unless peg_face.get_attribute( JAD, "peg", false)
               peg_ctr = get_peg_center(tenon, timber, peg_face)
               #print("Peg: " + peg_ctr.to_s + "\n")
@@ -195,8 +189,7 @@ module CB_TF
       back = nil
 
       model = Sketchup.active_model
-      sd.definition.entities.each do |face|
-        next unless face.instance_of? Sketchup::Face
+      sd.definition.entities.grep(Sketchup::Face) do |face|
         ctr = face.bounds.center
         ctr.transform!sd.transformation
         if ctr.z > topmost
@@ -260,13 +253,6 @@ module CB_TF
     #print("\n")
   end # mark_reference_faces
 
-  class ExtremeFace
-    def initialize(face, ctr)
-      @face = face
-      @ctr = ctr
-    end
-    attr_reader :face, :ctr
-  end
 
   ##########################################################
   ##  Make Shop Drawings
@@ -316,12 +302,13 @@ module CB_TF
     tf_shops_page.transition_time = 0
     tf_iso_page = pages.add "tf_iso"
     tf_iso_page.transition_time = 0
+    
     layers = model.layers
     tf_shops_layer = layers.add "tf_shops_layer"
     tf_iso_layer = layers.add "tf_iso_layer"
     tf_shops_layer.visible = true
     tf_iso_layer.visible = false
-
+    
     styles = model.styles
     tf_shops_style = nil
     styles.each do |s|
@@ -372,15 +359,12 @@ module CB_TF
 
 
     # On any of our own tenons. do these tasks
-    shop_dwg[0].definition.entities.each do |tenon|
-      # find the tenons
-      next unless tenon.instance_of? Sketchup::ComponentInstance
-
-      # put peg marks on our own tenons
-      next unless tenon.definition.get_attribute( JAD, "tenon", false)
-      tenon.definition.entities.each do |peg|
-        next unless peg.instance_of? Sketchup::Face
-        next unless peg.get_attribute( JAD, "peg", false)
+    shop_dwg[0].definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
+      next unless tenon.definition.get_attribute(JAD, "tenon", false)  # only tenons
+      tenon.set_attribute(JAD, "mine", true) # mark it as our own
+      # add peg marks 
+      tenon.definition.entities.grep(Sketchup::Face) do |peg|
+        next unless peg.get_attribute(JAD, "peg", false)
         # print("found a peg: " + peg.to_s + "\n")
         pc = Geom::Point3d.new(peg.bounds.center)  #peg center
         tenon.definition.entities.add_cpoint pc
@@ -389,8 +373,7 @@ module CB_TF
       # hide edges at the timber/joint interface
       lv0 = Geom::Point3d.new(0,0,0)  # local vertices
       lv1 = Geom::Point3d.new(0,0,0)
-      tenon.definition.entities.each do |tedge|   # tenon edge
-        next unless tedge.instance_of? Sketchup::Edge
+      tenon.definition.entities.grep(Sketchup::Edge) do |tedge|   # tenon edge
         tv0 = tedge.vertices[0].position
         v0 = tv0
         tv1 = tedge.vertices[1].position
@@ -402,8 +385,7 @@ module CB_TF
           v1.transform!tenon.transformation
           #print("in local space:", v0.to_s, v1.to_s, "\n")
           # do any of our own edges match up to this one?
-          shop_dwg[0].definition.entities.each do |ledge|  # local edge
-            next unless ledge.instance_of? Sketchup::Edge
+          shop_dwg[0].definition.entities.grep(Sketchup::Edge) do |ledge|  # local edge
             lv0 = ledge.vertices[0].position
             lv1 = ledge.vertices[1].position
             #print("testing local edge to hide - verts:", lv0.to_s, lv1.to_s, "\n")
@@ -420,16 +402,14 @@ module CB_TF
     global_to = Geom::Point3d.new(0,0,0)    # global tenon origin
     local_to = Geom::Point3d.new(0,0,0)    # local tenon origin
 
-    # every comp inst in the top level of the model is a potential timber
-    model.active_entities.each do |timber|
-      next unless timber.instance_of? Sketchup::ComponentInstance
-      next if timber == original
-      next if timber == shop_dwg[0]
+    # every comp inst in the top level of the MODEL is a potential timber
+    model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
+      next if timber == original  # not this
+      next if timber == shop_dwg[0]  # not these
       # print("Found potential timber:", timber, "\n")
-      # every comp inst in the top level of the timber is a potential tenon
-      timber.definition.entities.each do |tenon|
-        next unless tenon.instance_of? Sketchup::ComponentInstance
-        next unless tenon.definition.get_attribute( JAD, "tenon", false)
+      # every comp inst in the top level of the TIMBER is a potential tenon
+      timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
+        next unless tenon.definition.get_attribute( JAD, "tenon", false)  # only those marked as tenons
         # print "found a potential tenon:", tenon, "\n"
         global_to.set!(0,0,0)
         global_to.transform!tenon.transformation  # this in the position of the tenon within the context of the timber
@@ -446,16 +426,15 @@ module CB_TF
 
         #original.definition.entities.add_cpoint(local_to)
 
-        face_test = false
-        original.definition.entities.each do |face|
-          next unless face.instance_of? Sketchup::Face
+        face_test_passed = false
+        original.definition.entities.grep(Sketchup::Face) do |face|
           if face.classify_point(local_to) >= 1 and face.classify_point(local_to) <= 4 then
-            face_test = true
+            face_test_passed = true
             break
           end
         end
 
-        if face_test
+        if face_test_passed
           # found one!  Now create the mortise in the new timber
           # start by creating a temporary copy of the mortise in the correct position, but in global space
           tmortise = model.entities.add_instance(tenon.definition, [0,0,0]) # starts at global origin
@@ -475,6 +454,7 @@ module CB_TF
     end
     # print ("joined.\n")
 
+    # create the Isometric view timber
     iso_timber = model.entities.add_instance(shop_dwg[0].definition, [-20,0,0])
     iso_timber.make_unique
     iso_timber.name = "iso_timber"
@@ -527,8 +507,7 @@ module CB_TF
       frontmost = 10000
       bf = nil
       ff = nil
-      shop_definition.entities.each do |face|
-        next unless face.instance_of? Sketchup::Face
+      shop_definition.entities.grep(Sketchup::Face) do |face|
         ctr = face.bounds.center
         ctr.transform!shop_dwg[i].transformation
         if ctr.y > backmost
@@ -704,36 +683,46 @@ module CB_TF
 
   def CB_TF.remove_stray_faces(shop_instance)
     shop_definition = shop_instance.definition
-    shop_definition.entities.each do |joint|
-      next unless joint.instance_of? Sketchup::ComponentInstance
-      next if joint.hidden?
-      next if is_2d?(joint.definition)
-      joint.explode
+
+    # mark existing 1-face edges
+    shop_definition.entities.grep(Sketchup::Edge) do |edge|
+      if edge.faces.count <= 1
+        edge.set_attribute(JAD, "keep", true)
+      end
     end
-    passes = 0
-    loop do 
+
+    victims = []
+    shop_definition.entities.grep(Sketchup::ComponentInstance) do |joint|
+      if (!joint.hidden? && !is_2d?(joint.definition) && joint.get_attribute(JAD, "mine") != true)
+        victims << joint
+      end
+    end
+    # puts "exploding #{victims.count} joints"
+    victims.each do |joint|
+      # puts "exploding joint: #{joint.definition.name}"
+      joint.explode
+    end  
+
+    2.times do
       victims = []
-      shop_definition.entities.each do |edge|
-        next unless edge.instance_of? Sketchup::Edge
-        if edge.faces.count <= 1  
+      shop_definition.entities.grep(Sketchup::Edge) do |edge|
+        if ((edge.get_attribute(JAD, "keep", false) == false) && (edge.faces.count <= 1))
           victims.push edge
         end
       end
-      passes+=1
-      break if victims.empty? or passes >=3
+      break if victims.empty?
+      # puts "Remove stray faces erasing #{victims.count} edges"
       shop_definition.entities.erase_entities(victims)
     end
-    # puts "Remove stray faces made #{passes} passes"
     return shop_instance
   end
 
   # debug method
-  def test_bounds
+  def CB_TF.test_bounds
     ci = selected_component
     print("Comp Bounds:  w:"+ci.bounds.width.to_s+"\t d:"+ci.bounds.depth.to_s+"\t h:"+ci.bounds.height.to_s+"\n")
     dfn = ci.definition
-    dfn.entities.each do |face|
-      next unless face.instance_of? Sketchup::Face
+    dfn.entities.grep(Sketchup::Face) do |face|
       print("face: " + face.to_s+"\n")
       w = face.bounds.width
       h = face.bounds.height
@@ -749,8 +738,7 @@ module CB_TF
     message = ""
     no_dod_names = Array.new
     model = Sketchup.active_model
-    model.active_entities.each do |timber|
-      next unless timber.instance_of? Sketchup::ComponentInstance
+    model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
       next if timber.hidden?
       next unless timber.layer.visible?
       next if timber.layer.name == COSMETIC_PEG_LAYER_NAME
@@ -812,8 +800,7 @@ module CB_TF
     #print "tenon made:", sel, "\n"
 
     bfs = Array.new
-    dfn.entities.each do |face|
-      next unless face.instance_of? Sketchup::Face
+    dfn.entities.grep(Sketchup::Face) do |face|
       p = face.plane
       x = p[0]
       y = p[1]
@@ -839,6 +826,7 @@ module CB_TF
         if g<0 then g=0 end
         #print("\theight: " + h.to_s + "\t g: " + g.to_s + "\n")
         face.material = [g,g,g]
+        face.back_material = [g,g,g]
       end
 
       if x.abs < TOL and y.abs < TOL and o.abs < TOL

@@ -111,8 +111,7 @@ module CB_TF
   def CB_TF.largest_face(timber)
     cd = timber.definition
     largest = nil
-    cd.entities.each do |e|
-      next if not e.instance_of? Sketchup::Face
+    cd.entities.grep(Sketchup::Face) do |e|
       if (largest == nil) or (e.area > largest.area)
         largest = e
       end
@@ -123,8 +122,7 @@ module CB_TF
   def CB_TF.longest_edge(timber)
     cd = timber.definition
     longest = nil
-    cd.entities.each do |e|
-      next if not e.instance_of? Sketchup::Edge
+    cd.entities.grep(Sketchup::Edge) do |e|
       if (longest == nil) or (e.length > longest.length)
         longest = e
       end
@@ -268,12 +266,10 @@ module CB_TF
         # rafter in the green-blue plane
         #print("green-blue rafter\n")
         rotate_around_axis(timber, red, green)
-        #UI.messagebox("pause after red rotatation toward green")
         if make_dir_lables then
           add_directional_attributes(timber)
         end
         rotate_around_axis(timber, blue, red)
-        #UI.messagebox("pause after blue rotatation toward red")
         roll_plumb(timber)
       elsif lev.y.abs < 0.00001
         #rafter in the red-blue plane
@@ -299,7 +295,6 @@ module CB_TF
       end
       rotate_around_axis(timber, green, red)
       rotate_around_axis(timber, blue, red)
-      #UI.messagebox("pause3")
     end
   end  # lay down on red
 
@@ -364,8 +359,7 @@ module CB_TF
     cv = Geom::Vector3d.new(0,0,1) #comp vector (set to Z axis)
     co.transform!(joint.transformation)  #switch to our parent's coordinates
     cv.transform!(joint.transformation)
-    joint.parent.entities.each do |face|
-      next if not face.instance_of? Sketchup::Face
+    joint.parent.entities.grep(Sketchup::Face) do |face|
       if face.classify_point(co) >= 1 and face.classify_point(co) <= 4 and face.normal.parallel?(cv) then
   #    if co.on_face?(face) and face.normal.parallel?(cv)
         begin
@@ -386,10 +380,9 @@ module CB_TF
   end
 
   def CB_TF.vertex_at_origin(ci)
-    ci.definition.entities.each do |e|
-      next unless e.instance_of? Sketchup::Edge
-        return e.start if e.start.position == [0,0,0]
-        return e.end if e.end.position == [0,0,0]
+    ci.definition.entities.grep(Sketchup::Edge) do |e|
+      return e.start if e.start.position == [0,0,0]
+      return e.end if e.end.position == [0,0,0]
     end
     puts "No vertex at origin"
     return nil
