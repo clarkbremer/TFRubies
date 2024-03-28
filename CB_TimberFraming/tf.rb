@@ -261,7 +261,7 @@ module CB_TF
     attr_reader :face, :ctr
   end
 
-  
+
   ##########################################################
   ##  Make Shop Drawings
   ##
@@ -276,7 +276,7 @@ module CB_TF
     su_ver = Sketchup.version.split(".")[0].to_i
     puts "Sketchup Version: #{su_ver}"
     tm = Time.now
-    side_spacing = Sketchup.read_default("TF", "side_spacing", "30")
+    side_spacing = Sketchup.read_default("TF", "side_spacing", "30").to_i
 
     if not original.instance_of? Sketchup::ComponentInstance
       UI.messagebox "TF Rubies: Must have one and only one timber selected"
