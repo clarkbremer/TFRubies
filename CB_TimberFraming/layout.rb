@@ -6,6 +6,7 @@ module CB_TF
         tf_iso_scene = nil
         tf_shops_scene = nil
         qty = ""
+        tsize = ""
         scenes.each_with_index do |scene, i|
             if scene.name == "tf_shops"
                 tf_shops_scene = i
@@ -20,13 +21,15 @@ module CB_TF
             return
         end
 
-        # find the iso_timber, which is where we stashed the project name and qty
+        # find the iso_timber, which is where we stashed the project name, qty, and size
         project_name = nil
         model.entities.each do |ent|
             if ent.name == "iso_timber"
                 project_name = ent.get_attribute(JAD, "project_name")
                 qty = ent.get_attribute(JAD, "qty")
                 puts ("send_shops_to_layout qty= #{qty}")
+                tsize = ent.get_attribute(JAD, "tsize")
+                puts ("send_shops_to_layout size= #{tsize}")
                 break
             end
         end
@@ -128,6 +131,12 @@ module CB_TF
                 #     end
                 # end
             end
+            unless tsize == ""
+                anchor = Geom::Point2d.new(1, 0.5)
+                text = Layout::FormattedText.new("Size: #{tsize}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
+                doc.add_entity( text, default_layer, page )
+            end
+
         end
 
         # add_auto_dimensions(viewport)

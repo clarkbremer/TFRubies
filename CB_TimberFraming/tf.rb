@@ -591,6 +591,7 @@ module CB_TF
       drawing_name = original.name + ".skp"
     end
     tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
+    iso_timber.set_attribute(JAD, "tsize", tsize)
     drawing_header = company_name + "  |  " + "Project: " + model.title + "  |  " + ts
     drawing_title = timber_name + "  -  " + tsize
     victims = Array.new
