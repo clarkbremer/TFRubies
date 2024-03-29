@@ -234,11 +234,13 @@ module CB_TF
         next if not timber.layer.visible?
         if timber.name == ""
           # Unnamed Timbers
+          # puts "adding unnamed timber: #{timber.definition.name}"
           ul.add(timber, min_extra_timber_length, metric, roundup)
         else
           # Named timbers.  Assume they're unique
+          # puts "adding named timber: #{timber.name}"
           nl.add(timber, min_extra_timber_length, metric, roundup)
-        end
+        end 
         cl.add(timber, min_extra_timber_length, metric, roundup)   # all timbers
         timber_count = timber_count+1
         #print(timber_count.to_s + " timbers added\n");

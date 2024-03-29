@@ -1,6 +1,6 @@
 ##
 ##  Ruby extensions to Sketchup for Timber Framers
-##  Copyright (c) 2008 - 2023 Clark Bremer
+##  Copyright (c) 2008 - 2024 Clark Bremer
 ##  clarkbremer@gmail.com
 ##
 
@@ -22,30 +22,34 @@ module CB_TF
 
   # helper method to make sure that one and only one component is selected
   def CB_TF.selected_component
-      mm = Sketchup.active_model
-      ss = mm.selection
-      return nil if ss.count != 1
-      cc = ss[0]
-      return nil unless cc.instance_of? Sketchup::ComponentInstance
-      cc
+    mm = Sketchup.active_model
+    ss = mm.selection
+    return nil if ss.count != 1
+    cc = ss[0]
+    return nil unless cc.instance_of? Sketchup::ComponentInstance
+    cc
   end
 
   # helper method to make sure that one and only one face is selected
   def CB_TF.selected_face
-      mm = Sketchup.active_model
-      vv = mm.active_view
-      ss = mm.selection
-      return nil if ss.count != 1
-      ff = ss[0]
-      return nil unless ff.instance_of? Sketchup::Face
-      ff
+    mm = Sketchup.active_model
+    vv = mm.active_view
+    ss = mm.selection
+    return nil if ss.count != 1
+    ff = ss[0]
+    return nil unless ff.instance_of? Sketchup::Face
+    ff
+  end
+
+  def CB_TF.has_attribute?(entity, attribute)
+    entity.get_attribute(JAD, attribute, false) == true
   end
 
   # a couple of useful debugging tools
   def CB_TF.debug_id
-      mm = Sketchup.active_model
-      vv = mm.active_view
-      ss = mm.selection
+    mm = Sketchup.active_model
+    vv = mm.active_view
+    ss = mm.selection
     print ss[0].to_s + "\n"
   end
 
@@ -368,11 +372,11 @@ module CB_TF
 
     # On any of our own tenons. do these tasks
     shop_dwg[0].definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
-      next unless tenon.definition.get_attribute(JAD, "tenon", false)  # only tenons
+      next unless has_attribute?(tenon.definition, "tenon")  # only tenons
       tenon.set_attribute(JAD, "mine", true) # mark it as our own
       # add peg marks 
       tenon.definition.entities.grep(Sketchup::Face) do |peg|
-        next unless peg.get_attribute(JAD, "peg", false)
+        next unless has_attribute?(peg, "peg")
         # print("found a peg: " + peg.to_s + "\n")
         pc = Geom::Point3d.new(peg.bounds.center)  #peg center
         tenon.definition.entities.add_cpoint pc
@@ -417,7 +421,7 @@ module CB_TF
       # print("Found potential timber:", timber, "\n")
       # every comp inst in the top level of the TIMBER is a potential tenon
       timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
-        next unless tenon.definition.get_attribute( JAD, "tenon", false)  # only those marked as tenons
+        next unless  has_attribute?(tenon.definition, "tenon")  # only those marked as tenons
         # print "found a potential tenon:", tenon, "\n"
         global_to.set!(0,0,0)
         global_to.transform!tenon.transformation  # this in the position of the tenon within the context of the timber
@@ -596,7 +600,9 @@ module CB_TF
       next if e.instance_of? Sketchup::SectionPlane # because undo does not fix this
       victims.push e
     end
-    victims.each {|victim| victim.erase! if victim.valid?}
+    # I can't recall when or why I added the valid? check, 
+    # but that's why I'm not using bulk delete (erase_entities)
+    victims.each {|victim| victim.erase! if victim.valid?}  
 
     result = model.definitions.purge_unused
     if not result
@@ -701,7 +707,7 @@ module CB_TF
 
     victims = []
     shop_definition.entities.grep(Sketchup::ComponentInstance) do |joint|
-      if (!joint.hidden? && !is_2d?(joint.definition) && joint.get_attribute(JAD, "mine") != true)
+      if (!joint.hidden? && !is_2d?(joint.definition) && !has_attribute?(joint, "mine"))
         victims << joint
       end
     end
@@ -714,7 +720,7 @@ module CB_TF
     2.times do
       victims = []
       shop_definition.entities.grep(Sketchup::Edge) do |edge|
-        if ((edge.get_attribute(JAD, "keep", false) == false) && (edge.faces.count <= 1))
+        if (!has_attribute?(edge, "keep") && (edge.faces.count <= 1))
           victims.push edge
         end
       end
@@ -775,13 +781,13 @@ module CB_TF
   # verify that the selected component is already a tenon
   def CB_TF.sel_is_tenon
     return false unless sel=selected_component
-    return sel.definition.get_attribute( JAD, "tenon", false)
+    return has_attribute?(sel.definition, "tenon")
   end
 
   # verify that the selected face is already a peg
   def CB_TF.sel_is_peg
     return false unless sel = selected_face
-    return sel.get_attribute( JAD, "peg", false)
+    return has_attribute?(sel, "peg")
   end
 
   ###################################################
@@ -843,7 +849,6 @@ module CB_TF
       end
     end
     bfs.each {|base| base.erase! if base.valid?}
-
   end
 
   def CB_TF.unroll_joint
@@ -968,7 +973,7 @@ module CB_TF
   ##  Splice our juju into the menus
   ##
 
-  # Menu Validation Procs: Determine if a particular menu itme should be enabled or not
+  # Menu Validation Procs: Determine if a particular menu item should be enabled or not
 
   def CB_TF.peg_valid_proc
     if sel_is_peg
