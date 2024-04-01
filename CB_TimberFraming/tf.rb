@@ -12,6 +12,7 @@ require "CB_TimberFraming/version.rb"
 require "CB_TimberFraming/component_instance.rb"
 require "CB_TimberFraming/timber_list.rb"
 require "CB_TimberFraming/layout.rb"
+require "CB_TimberFraming/peg_report.rb"
 
 # All our stuff goes in this module to avoid namespace collisions with other plugins
 module CB_TF
@@ -60,7 +61,7 @@ module CB_TF
     end
   end
 
-  # returns peg center projected onto timber face.  Result is in timber space
+  # returns peg center projected onto timber face.  Result is a point in timber space
   def CB_TF.get_peg_center(mortise, timber, peg)
     model = Sketchup.active_model
     pc = Geom::Point3d.new(peg.bounds.center)  #peg center
@@ -83,7 +84,7 @@ module CB_TF
       mpc = tpc.clone
       mpc.transform!(mortise.transformation.inverse) # transfrom from timber space to mortise space
     else
-      printf("project_pegs: raytest failed\n")
+      printf("project_pegs: raytest failed (probably a tenon not inserted into a timber)\n")
       tpc = nil
     end
 
@@ -1070,6 +1071,7 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Timber List by Layer") {CB_TF.make_timber_list(true)}
   tf_menu.add_item("Count Joints and Timbers") {CB_TF.count_joints}
   tf_menu.add_item("Show Pegs") {CB_TF.show_pegs}
+  tf_menu.add_item("Peg Report") {CB_TF.peg_report}
   tf_menu.add_item("DoD Report") {CB_TF.dod_report}
   tf_menu.add_item("Send Shops to Layout") {CB_TF.send_shops_to_layout}
   peg_tool_item = tf_menu.add_item("TF Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
