@@ -13,6 +13,7 @@ require "CB_TimberFraming/component_instance.rb"
 require "CB_TimberFraming/timber_list.rb"
 require "CB_TimberFraming/layout.rb"
 require "CB_TimberFraming/peg_report.rb"
+require "CB_TimberFraming/configure.rb"
 
 # All our stuff goes in this module to avoid namespace collisions with other plugins
 module CB_TF
@@ -1005,7 +1006,7 @@ unless file_loaded?("tf.rb")
   stretch_tool_item = tf_menu.add_item("TF Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
   tf_menu.set_validation_proc(stretch_tool_item) {CB_TF.stretch_tool_valid_proc}
   tf_menu.add_item("Assign DoD Tool"){Sketchup.active_model.select_tool(CB_TF::DoDTool.new)}
-  tf_menu.add_item("Configure") {CB_TF.tf_configure}
+  tf_menu.add_item("Configure") {CB_TF.configure}
   tf_menu.add_item("About") {CB_TF.tf_version}
   tf_menu.add_item("Contribute") {CB_TF.tf_contribute}
 end
