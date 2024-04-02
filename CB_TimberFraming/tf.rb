@@ -882,89 +882,15 @@ module CB_TF
     #print ("DoD set to "+ dod.to_s+"\n")
   end
 
-  #
-  # Display configuration dialog.  TODO:  Use webdialog
-  #
-  def CB_TF.tf_configure
-    p0 = "Show Quantity on Shop Drawings?"
-    p1 = "Directional labels on Shop Drawings?"
-    p2 = "Round up dimensions on timber list?"
-    p3 = "Timber list as CSV, Text or Xcel?"
-    p4 = "English or Metric?"
-    p5 = "Unwrap or Roll Shop Drawings?"
-    p6 = "Side Spacing on Shop Drawings:"
-    p7 = "Minimum extra timber length for timber list:"
-    p8 = "Company Name:"
-
-    ny = ["N", "Y"]
-    em = ["E", "M"]
-    ru = ["U", "R"]
-    dd0 = %w[Y N].join("|")
-    dd1 = %w[Y N].join("|")
-    dd2 = %w[Y N].join("|")
-    dd3 = %w[C T X].join("|")
-    dd4 = %w[E M].join("|")
-    dd5 = %w[U R].join("|")
-    dds = [dd0, dd1, dd2, dd3, dd4, dd5]
-
-    d0 = ny[Sketchup.read_default("TF", "qty", 1)]
-    d1 = ny[Sketchup.read_default("TF", "dir_labels", 1)]
-    d2 = ny[Sketchup.read_default("TF", "roundup", 1)]
-    d3 = Sketchup.read_default("TF", "list_file_format", "C")
-    d4 = em[Sketchup.read_default("TF", "metric", 0)]
-    d5 = ru[Sketchup.read_default("TF", "roll", 0)]
-    d6 = Sketchup.read_default("TF", "side_spacing", "30")
-    d7 = Sketchup.read_default("TF", "min_extra_timber_length", "24")
-    d8 = Sketchup.read_default("TF", "company_name", "")
-    prompts = [p0, p1, p2, p3, p4, p5, p6, p7, p8]
-    defaults = [d0, d1, d2, d3, d4, d5, d6, d7, d8]
-    title = "TF Rubies Configuration"
-      results = inputbox(prompts, defaults, dds, title)
-    return nil unless results
-    if results[0] == "Y" then
-      Sketchup.write_default("TF", "qty", 1)
-    else
-        Sketchup.write_default("TF", "qty", 0)
-    end
-    if results[1] == "Y" then
-      Sketchup.write_default("TF", "dir_labels", 1)
-    else
-        Sketchup.write_default("TF", "dir_labels", 0)
-    end
-    if results[2] == "Y" then
-      Sketchup.write_default("TF", "roundup", 1)
-    else
-        Sketchup.write_default("TF", "roundup", 0)
-    end
-    case results[3]
-    when "C" 
-      Sketchup.write_default("TF", "list_file_format", "C")
-    when "T"
-      Sketchup.write_default("TF", "list_file_format", "T")
-    when "X"
-      Sketchup.write_default("TF", "list_file_format", "X")
-    end
-    if results[4] == "M" then
-      Sketchup.write_default("TF", "metric", 1)
-    else
-        Sketchup.write_default("TF", "metric", 0)
-    end
-    if results[5] == "R" then
-      Sketchup.write_default("TF", "roll", 1)
-    else
-        Sketchup.write_default("TF", "roll", 0)
-    end
-
-    Sketchup.write_default("TF", "side_spacing", results[6].to_i )
-    Sketchup.write_default("TF", "min_extra_timber_length", results[7].to_i )
-    Sketchup.write_default("TF", "company_name", results[8])
-  end
-
   # Report the version
   def self.tf_version
     vv = CB_TF::CB_TimberFraming_VERSION
     dd = CB_TF::CB_TimberFraming_DATE
-    UI.messagebox("TF Extensions Version #{vv} - #{dd} - Copyright (c) Clark Bremer.")
+    UI.messagebox(%Q[
+      TF Extensions Version #{vv} - #{dd}
+      Copyright (c) Clark Bremer
+      clark@tenon.technology
+  ])
   end
 
   def CB_TF.tf_contribute

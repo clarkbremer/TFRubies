@@ -168,7 +168,6 @@ module CB_TF
             p.center {
               text-align: center;
             }
-          }
           </style>
         </head>
 
