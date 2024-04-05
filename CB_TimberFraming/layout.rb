@@ -51,7 +51,7 @@ module CB_TF
         layout_file_name = File.join(File.dirname(model.path), "#{project_name}.layout")
 
         puts "layout_file_name: #{layout_file_name}"
-        if layout_file_name && File.exists?(layout_file_name)
+        if layout_file_name && File.exist?(layout_file_name)
             doc =  Layout::Document.open(layout_file_name)
             default_layer = nil
             layers = doc.layers
