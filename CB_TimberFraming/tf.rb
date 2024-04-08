@@ -995,7 +995,6 @@ unless file_loaded?("tf.rb")
     UI.messagebox("TF Rubies: Error adding plugins menu")
   end
   tf_menu.add_item("Timber List") {CB_TF.make_timber_list}
-  tf_menu.add_item("Timber List by Layer") {CB_TF.make_timber_list(true)}
   tf_menu.add_item("Count Joints and Timbers") {CB_TF.count_joints}
   tf_menu.add_item("Show Pegs") {CB_TF.show_pegs}
   tf_menu.add_item("Peg Report") {CB_TF.peg_report}

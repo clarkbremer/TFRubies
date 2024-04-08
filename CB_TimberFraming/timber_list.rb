@@ -2,6 +2,7 @@ module CB_TF
   ##########################################################
   ##  Make Timber List
   ##
+  ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/timber_list.rb"
   ##  Helper Classes:
   ##
   class CountedTimber
@@ -101,17 +102,15 @@ module CB_TF
   end
 
 
-  def CB_TF.make_timber_list(with_layers=false)
+  def CB_TF.make_timber_list
     begin
+
       model = Sketchup.active_model
       file_format = Sketchup.read_default("TF", "list_file_format", "C")
+      tally_by_tag = Sketchup.read_default("TF", "list_by_tag", 0) == 1
       case file_format
       when "X"
-        if RUBY_VERSION.to_f == 1.8
-          require('CB_TimberFraming/win32ole')
-        else
-          require('win32ole')
-        end
+        require('win32ole')
         excel = WIN32OLE::new('excel.Application')
         print( "excel version: " + excel.version.to_s + "\n")
         unless file_loaded?("excel_constants")
@@ -138,6 +137,7 @@ module CB_TF
       end
       if tl_file_name
         print("saving timber list as:"+tl_file_name + "\n")
+        puts "Using tally by tag" if tally_by_tag
         begin
           File.delete(tl_file_name)
         rescue
@@ -172,6 +172,7 @@ module CB_TF
       when "X"
         excel.visible = true
         workbook = excel.Workbooks.add
+
         worksheet = workbook.Worksheets(1) #get hold of the first worksheet
         worksheet.name = "Details"
         worksheet.columns("a").columnwidth = 20    # name
@@ -253,7 +254,7 @@ module CB_TF
       print("condensing\n")
       cl.condense!
 
-      if with_layers
+      if tally_by_tag
         layer_lists = {}
         model.active_entities.each do |timber|
           next if not timber.instance_of? Sketchup::ComponentInstance
@@ -264,7 +265,7 @@ module CB_TF
             layer_lists[ll]=TimberList.new
           end
           layer_lists[ll].add(timber, min_extra_timber_length, metric, roundup)
-          print("Added timber to layer #{ll.name}\n");
+          # print("Added timber to tag #{ll.name}\n");
         end
 
         print("condensing\n")
@@ -279,6 +280,7 @@ module CB_TF
         worksheet.cells(row,1).value = "Timbers"
         worksheet.cells(row,1).font.bold = true
         worksheet.cells(row,1).font.italic = true
+        worksheet.cells(row,1).font.size = 14
         row+=1
         worksheet.cells(row,1).value = "Name"
         worksheet.cells(row,3).value = "W"
@@ -337,6 +339,7 @@ module CB_TF
         worksheet.cells(row,1).value = "Scantlings"
         worksheet.cells(row,1).font.bold = true
         worksheet.cells(row,1).font.italic = true
+        worksheet.cells(row,1).font.size = 14
         row+=1
         worksheet.cells(row,1).value = "Name"
         worksheet.cells(row,2).value = "Qty"
@@ -399,9 +402,9 @@ module CB_TF
         #### Tally Section
         #
         #
-        worksheet = workbook.Worksheets(2) #page 2
+        worksheet = workbook.Worksheets.add(after: worksheet) #create page 2
         worksheet.name = "Tally"
-        worksheet.columns("a").columnwidth = 10    # blank
+        worksheet.columns("a").columnwidth = 10   # blank
         worksheet.columns("b").columnwidth = 5    # W
         worksheet.columns("c").columnwidth = 5    # D
         worksheet.columns("d").columnwidth = 5    # Qty
@@ -410,7 +413,7 @@ module CB_TF
           worksheet.columns("e").NumberFormat = "0.0"
         end
         worksheet.columns("f").columnwidth = 7    # Blank
-        worksheet.columns("g").columnwidth = 10    # BF
+        worksheet.columns("g").columnwidth = 10   # BF
         if metric
           worksheet.columns("g").NumberFormat = "0.000"
         else
@@ -507,10 +510,10 @@ module CB_TF
         worksheet.cells(row,17).NumberFormat = "0.0;[red]0.0"
         # end tally section
 
-        if with_layers
-          worksheet = workbook.Worksheets(3) #page 3
-          worksheet.name = "Tally by Layer"
-          worksheet.columns("a").columnwidth = 10    # blank
+        if tally_by_tag
+          worksheet = workbook.Worksheets.add(after: worksheet) #create page 3
+          worksheet.name = "Tally by Tag"
+          worksheet.columns("a").columnwidth = 10   # blank
           worksheet.columns("b").columnwidth = 5    # W
           worksheet.columns("c").columnwidth = 5    # D
           worksheet.columns("d").columnwidth = 5    # Qty
@@ -519,7 +522,7 @@ module CB_TF
             worksheet.columns("e").NumberFormat = "0.0"
           end
           worksheet.columns("f").columnwidth = 7    # Blank
-          worksheet.columns("g").columnwidth = 10    # BF
+          worksheet.columns("g").columnwidth = 10   # BF
           if metric
             worksheet.columns("g").NumberFormat = "0.000"
           else
@@ -531,7 +534,7 @@ module CB_TF
           worksheet.cells(row,1).font.italic = true
           worksheet.cells(row,1).font.size = 14
           row+=1
-          worksheet.cells(row,1).value = "Timber Tally by Layer"
+          worksheet.cells(row,1).value = "Timber Tally by Tag"
           worksheet.cells(row,1).font.bold = true
           worksheet.cells(row,1).font.size = 14
           row+=2
@@ -588,15 +591,16 @@ module CB_TF
             end
             row+=2
           end
-        end # with_layers
+        end # tally_by_tag
 
         begin
-          workbook.saveas(tl_file_name)
+          windows_filename = tl_file_name.gsub(/\//, '\\')
+          puts "windows file name: #{windows_filename}"
+          workbook.saveas(windows_filename)
         rescue
           UI.messagebox("Error saving Excel File (might be open in excel)")
         end
-        workbook.Close(1)
-        excel.Quit
+        workbook.worksheets(1).activate
 
       when "C"  # csv mode
         tl_file << "\nTimbers:\n"
@@ -660,8 +664,8 @@ module CB_TF
         end
         tl_file << ",,,,=SUM(E#{row-cl.length}:E#{row-1})\n"
         row+=1
-        if with_layers
-          tl_file << "\n" << "Tally by Layer:\n"
+        if tally_by_tag
+          tl_file << "\n" << "Tally by Tag:\n"
           row+=1
           if metric
             then tl_file << "W,D,Qty,L(m),V(m3)\n"
@@ -669,7 +673,7 @@ module CB_TF
           end
           row+=1
           layer_lists.each_pair do |layer, list|
-            tl_file << "\n" << "  == Layer #{layer.name} ==\n"
+            tl_file << "\n" << "<Tag: #{layer.name}>\n"
             list.each do |ct|
               if metric
                 tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft/100 << "," << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
@@ -760,8 +764,8 @@ module CB_TF
         total_bf = ((total_bf*100).round)/100.0
         tl_file << "\t\t\t\t" << total_bf.to_s << "\n"
         row+=1
-        if with_layers
-          tl_file << "\n" << "Tally by Layer:\n"
+        if tally_by_tag
+          tl_file << "\n" << "Tally by Tag:\n"
           row+=1
           if metric
             then tl_file << "W\tD\tQty\tL(m)\tV(m3)\n"
@@ -769,7 +773,7 @@ module CB_TF
           end
           row+=1
           layer_lists.each_pair do |layer, list|
-            tl_file << "\n" << "  == Layer #{layer.name} ==\n"
+            tl_file << "\n" << "  == Tag #{layer.name} ==\n"
             list.each do |ct|
               if metric
                 tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft/100 << "\t" << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"

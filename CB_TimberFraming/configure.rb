@@ -10,7 +10,7 @@ module CB_TF
         :scrollable => true,
         :resizable => false,
         :width => 700,
-        :height => 500,
+        :height => 600,
         :left => 200,
         :top => 200,
         :style => UI::HtmlDialog::STYLE_DIALOG
@@ -23,6 +23,7 @@ module CB_TF
       dir_labels: Sketchup.read_default("TF", "dir_labels", true),
       roundup: Sketchup.read_default("TF", "roundup", true),
       list_file_format: Sketchup.read_default("TF", "list_file_format", "C"),
+      list_by_tag: Sketchup.read_default("TF", "list_by_tag", false),
       metric: Sketchup.read_default("TF", "metric", false),
       roll: Sketchup.read_default("TF", "roll", false),
       min_extra_timber_length: Sketchup.read_default("TF", "min_extra_timber_length", "24")      
@@ -92,6 +93,14 @@ puts "config: #{config}"
                 ci.checked = true;
               }
 
+              if (data.list_by_tag == true){
+                ci = document.getElementById('list_by_tagY');
+                ci.checked = true;
+              } else {
+                ci = document.getElementById('list_by_tagN');
+                ci.checked = true;
+              }
+              
               if (data.metric == true){
                 ci = document.getElementById('metric');
                 ci.checked = true;
@@ -140,6 +149,9 @@ puts "config: #{config}"
             ci = document.getElementById('roundupY');
             data.roundup = ci.checked;
 
+            ci = document.getElementById('list_by_tagY');
+            data.list_by_tag = ci.checked;            
+            
             ci = document.getElementById('metric');
             data.metric = ci.checked;            
             
@@ -177,7 +189,7 @@ puts "config: #{config}"
             <label>Side Spacing:</label>
             <input id='side_spacing'; type="number" />            
 
-            <label>Show QTY and Size on shops?</label>
+            <label>Show QTY and Size on Shops?</label>
             <div>
               <input id="qtyY"; type="radio" name="qty"/>
               <label for="qtyY">Yes</label><br>
@@ -185,7 +197,7 @@ puts "config: #{config}"
               <label for="qtyN">No</label>
             </div>
 
-            <label>Show NSEWTB labels on shops?</label>
+            <label>Show NSEWTB Labels on Shops?</label>
             <div>
               <input id="dir_labelsY"; type="radio" name="dir_labels"/>
               <label for="dir_labelsY">Yes</label><br>
@@ -193,12 +205,20 @@ puts "config: #{config}"
               <label for="dir_labelsN">No</label>
             </div>
 
-            <label>Round up dimensions on timber list?</label>
+            <label>Round Up Dimensions on Timber list?</label>
             <div>
               <input id="roundupY"; type="radio" name="roundup"/>
               <label for="roundupY">Yes</label><br>
               <input id="roundupN"; type="radio" name="roundup"/>
               <label for="roundupN">No</label>
+            </div>
+ 
+            <label>Timber List Tally by Tag?</label>
+            <div>
+              <input id="list_by_tagY"; type="radio" name="list_by_tag"/>
+              <label for="list_by_tagY">Yes</label><br>
+              <input id="list_by_tagN"; type="radio" name="list_by_tag"/>
+              <label for="list_by_tagN">No</label>
             </div>
  
             <label>English or Metric?</label>
@@ -209,7 +229,7 @@ puts "config: #{config}"
               <label for="metric">Metric</label><br>
             </div>
             
-            <label>Timber list File Format?</label>
+            <label>Timber List File Format:</label>
             <div>
               <input id="lff_csv"; type="radio" name="lff"/>
               <label for="lff_csv">CSV</label><br>
@@ -227,7 +247,7 @@ puts "config: #{config}"
               <label for="roll">Roll</label><br>
             </div>
                         
-            <label>Minimum extra timber length:</label>
+            <label>Minimum Extra Timber Length:</label>
             <input id='min_extra_timber_length'; type="number" />               
           </div>
 
@@ -246,6 +266,7 @@ puts "config: #{config}"
       data["dir_labels"] ? Sketchup.write_default("TF", "dir_labels", 1) : Sketchup.write_default("TF", "dir_labels", 0)
       data["roundup"] ? Sketchup.write_default("TF", "roundup", 1) : Sketchup.write_default("TF", "roundup", 0)
       Sketchup.write_default("TF", "list_file_format", data["list_file_format"])
+      data["list_by_tag"] ? Sketchup.write_default("TF", "list_by_tag", 1) : Sketchup.write_default("TF", "list_by_tag", 0)
       data["metric"] ? Sketchup.write_default("TF", "metric", 1) : Sketchup.write_default("TF", "metric", 0)
       data["roll"] ? Sketchup.write_default("TF", "roll", 1) : Sketchup.write_default("TF", "roll", 0)
       Sketchup.write_default("TF", "side_spacing", data["side_spacing"].to_i )

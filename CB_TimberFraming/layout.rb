@@ -51,8 +51,11 @@ module CB_TF
         layout_file_name = File.join(File.dirname(model.path), "#{project_name}.layout")
 
         puts "layout_file_name: #{layout_file_name}"
+        Sketchup.status_text = "A page is being appended to the Layout doc (this can take a while)..."
         if layout_file_name && File.exist?(layout_file_name)
+            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before  Layout::Document.open()"
             doc =  Layout::Document.open(layout_file_name)
+            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After  Layout::Document.open()"
             default_layer = nil
             layers = doc.layers
             layers.each { |layer| default_layer = layer if layer.name == "Default" }
@@ -142,12 +145,15 @@ module CB_TF
         # add_auto_dimensions(viewport)
 
         begin
+            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before document save"
             doc.save
+            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After document save"
         rescue ArgumentError  => err
             UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
             return
         end
         puts "#{model.title} added to #{project_name}"
+        Sketchup.status_text = ""
         UI.messagebox("Page #{model.title} added to #{project_name}")
 
     end
