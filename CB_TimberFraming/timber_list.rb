@@ -118,10 +118,7 @@ module CB_TF
           file_loaded("excel_constants")
         end
         excel.visible = false
-        if excel.version.to_f >= 12
-          then tl_file_name = UI.savepanel("Save Timber List", "","timber_list.xlsx")
-          else tl_file_name = UI.savepanel("Save Timber List", "","timber_list.xls")
-        end
+        tl_file_name = UI.savepanel("Save Timber List", "","*.xlsx")
       when "C", "T"
         case file_format
         when "C"

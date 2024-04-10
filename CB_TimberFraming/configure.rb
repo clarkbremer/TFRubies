@@ -28,7 +28,6 @@ module CB_TF
       roll: Sketchup.read_default("TF", "roll", false),
       min_extra_timber_length: Sketchup.read_default("TF", "min_extra_timber_length", "24")      
     }
-puts "config: #{config}"
 
     html = %Q[
       <!DOCTYPE html>
@@ -258,7 +257,7 @@ puts "config: #{config}"
 
     dialog.set_html(html)
     dialog.add_action_callback("tf_save_config") { |action_context, data|
-      puts "data: #{data}"
+      puts "saving config data: \n#{data}"
       dialog.close()
 
       Sketchup.write_default("TF", "company_name", data["company_name"])      
