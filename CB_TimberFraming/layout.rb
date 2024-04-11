@@ -96,6 +96,7 @@ module CB_TF
             end
         end
 
+        puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before  adding views"
         page = pages.add(model.title)
         # layer = doc.layers.add(model.title)
         # layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
@@ -118,28 +119,38 @@ module CB_TF
         doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
         viewport.render if viewport.render_needed?
+        puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After  adding views"
 
         # set qty if present and so configured
-        q = Sketchup.read_default("TF", "qty", 1).to_i
-        if q==1 then
-            unless qty == ""
-                anchor = Geom::Point2d.new(1, 0.3)
-                text = Layout::FormattedText.new("Qty: #{qty}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
-                doc.add_entity( text, default_layer, page )
-                
+        show_qty_and_size = Sketchup.read_default("TF", "qty", 1).to_i
+        if show_qty_and_size==1 then
                 # auto_texts = doc.auto_text_definitions  # this doesn't work, as the auto_text is global across all pages.
                 # auto_texts.each do |auto_text|
                 #     if auto_text.tag== "<Qty>"
                 #         auto_text.custom_text = qty
                 #     end
                 # end
-            end
             unless tsize == ""
-                anchor = Geom::Point2d.new(1, 0.5)
-                text = Layout::FormattedText.new("Size: #{tsize}", anchor, Layout::FormattedText::ANCHOR_TYPE_TOP_LEFT)
-                doc.add_entity( text, default_layer, page )
-            end
+                sq_x_pos = Sketchup.read_default("TF", "sq_x_pos", 1).to_f
+                sq_y_pos = Sketchup.read_default("TF", "sq_y_pos", 1).to_f
+                sq_font_size = Sketchup.read_default("TF", "sq_font_size", 1).to_i
+                sq_rotate = Sketchup.read_default("TF", "sq_rotate", 0).to_i
+                sq_bold = Sketchup.read_default("TF", "sq_bold", true)
 
+                anchor = Geom::Point2d.new(sq_x_pos, sq_y_pos)
+                if qty == "" || qty == "1"
+                    text = Layout::FormattedText.new("#{tsize}", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
+                else
+                    text = Layout::FormattedText.new("#{tsize} (#{qty})", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
+                end
+                style = text.style
+                style.font_size = sq_font_size
+                style.text_bold = sq_bold
+                text.style = style
+                doc.add_entity( text, default_layer, page )
+                transformation = Geom::Transformation2d.rotation(anchor, sq_rotate.degrees)
+                text.transform! transformation
+            end
         end
 
         # add_auto_dimensions(viewport)

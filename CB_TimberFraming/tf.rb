@@ -474,7 +474,11 @@ module CB_TF
     iso_timber.name = "iso_timber"
     iso_timber.layer = tf_iso_layer
     iso_timber.set_attribute(JAD, "project_name", model.title) # stash these here so we can find them in the shop drawings file
-    qty = original.definition.count_instances
+    if original.name != ""
+      qty = 1
+    else
+      qty = original.definition.count_instances
+    end
     iso_timber.set_attribute(JAD, "qty", qty.to_s)
     iso_timber = remove_stray_faces(iso_timber)
 

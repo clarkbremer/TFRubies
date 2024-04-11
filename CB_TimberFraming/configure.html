@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Timber Framing Extensions Configuration</title>
+    <style>
+    %{stylesheet}
+    </style>
+  </head>
+  <script>
+    var data = JSON.parse('%{config_json}');
+    %{javascript}
+  </script>
+
+
+  <body>
+    <h1>TF Rubies Config</h1>
+    
+    <div class="settings">
+      <label>Company Name:</label>
+      <input id='company_name'; type="text" />
+
+      <label>Side Spacing:</label>
+      <input id='side_spacing'; type="number" />            
+
+      <label>Show NSEWTB Labels on Shops?</label>
+      <div>
+        <input id="dir_labelsY"; type="radio" name="dir_labels"/>
+        <label for="dir_labelsY">Yes</label><br>
+        <input id="dir_labelsN"; type="radio" name="dir_labels"/>
+        <label for="dir_labelsN">No</label>
+      </div>
+
+      <label>Round Up Dimensions on Timber list?</label>
+      <div>
+        <input id="roundupY"; type="radio" name="roundup"/>
+        <label for="roundupY">Yes</label><br>
+        <input id="roundupN"; type="radio" name="roundup"/>
+        <label for="roundupN">No</label>
+      </div>
+
+      <label>Timber List Tally by Tag?</label>
+      <div>
+        <input id="list_by_tagY"; type="radio" name="list_by_tag"/>
+        <label for="list_by_tagY">Yes</label><br>
+        <input id="list_by_tagN"; type="radio" name="list_by_tag"/>
+        <label for="list_by_tagN">No</label>
+      </div>
+
+      <label>English or Metric?</label>
+      <div>
+        <input id="english"; type="radio" name="metric"/>
+        <label for="english">English</label>
+        <input id="metric"; type="radio" name="metric"/>
+        <label for="metric">Metric</label><br>
+      </div>
+      
+      <label>Timber List File Format:</label>
+      <div>
+        <input id="lff_csv"; type="radio" name="lff"/>
+        <label for="lff_csv">CSV</label><br>
+        <input id="lff_txt"; type="radio" name="lff"/>
+        <label for="lff_txt">Text</label>
+        <input id="lff_xls"; type="radio" name="lff"/>
+        <label for="lff_xls">Excel</label>
+      </div>
+
+      <label>Unwrap or Roll Shop Drawings?</label>
+      <div>
+        <input id="unwrap"; type="radio" name="roll"/>
+        <label for="unwrap">Unwrap</label>
+        <input id="roll"; type="radio" name="roll"/>
+        <label for="roll">Roll</label><br>
+      </div>
+                  
+      <label>Minimum Extra Timber Length:</label>
+      <input id='min_extra_timber_length'; type="number" />               
+
+      <label>Show Size and Qty on Shops?</label>
+      <div>
+        <input id="qtyY"; type="radio" onchange="show_qty_config();" name="qty"/>
+        <label for="qtyY">Yes</label><br>
+        <input id="qtyN"; type="radio" onchange="hide_qty_config();"name="qty"/>
+        <label for="qtyN">No</label>
+      </div>
+    </div>
+
+    <div id="size_qty_div" class="settings">
+      <label>Size and Qty X Position:</label>
+      <input id='sq_x' type="number" step="0.125" />               
+
+      <label>Size and Qty Y Position:</label>
+      <input id='sq_y' type="number" step="0.125" />               
+
+      <label>Size and Qty Rotation:</label>
+      <input id='sq_rotate' type="number" step="90" />               
+
+      <label>Size and Qty Font Size:</label>
+      <input id='sq_font_size' type="number" step="2" />               
+
+      <label>Size and Qty Bold?</label>
+      <div>
+        <input id="sq_boldY"; type="radio" name="sq_bold"/>
+        <label for="sq_boldY">Yes</label><br>
+        <input id="sq_boldN"; type="radio" name="sq_bold"/>
+        <label for="sq_boldN">No</label>
+      </div>      
+    </div>
+
+    <p class="center"><button onclick='save_data()'>Save</button><button class="pad"; onclick='sketchup.tf_cancel()'>Cancel</button></p>
+  </body>
+</html>
