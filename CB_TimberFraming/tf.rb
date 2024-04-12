@@ -3,6 +3,8 @@
 ##  Copyright (c) 2008 - 2024 Clark Bremer
 ##  clarkbremer@gmail.com
 ##
+##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
+##
 
 require 'sketchup.rb'
 require 'CB_TimberFraming/tf_peg_tool.rb'
@@ -277,7 +279,6 @@ module CB_TF
   ##  from each other to show all 4 faces, parralel perspective.
   ##  Must have one and only one component selected.
   ##
-  ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
   def CB_TF.make_shop_drawings(original)
     su_ver = Sketchup.version.split(".")[0].to_i
     puts "Sketchup Version: #{su_ver}"
@@ -658,7 +659,8 @@ module CB_TF
 
     puts("showing file save dialog.  Drawing name: #{drawing_name}")
     begin
-      sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
+      shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
+      sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)
       if sd_file
         print("File name returned from save dialog: "+ sd_file + "\n")
         while sd_file.index("\\")
@@ -672,6 +674,8 @@ module CB_TF
         end
         if not save_status
           UI.messagebox("TF Rubies: Error saving Shop Drawings!")
+        else
+          Sketchup.write_default("TF", "shop_drawings_path", File.dirname(sd_file))
         end
       else
         UI.messagebox("Shop Drawings NOT saved!")

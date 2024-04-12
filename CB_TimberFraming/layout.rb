@@ -61,7 +61,8 @@ module CB_TF
             layers.each { |layer| default_layer = layer if layer.name == "Default" }
         else
             puts "doc not found, creating new"
-            template_file_name = UI.openpanel("Choose a Layout Template", "", "Layout|*.layout||")
+            layout_template_path =  Sketchup.read_default("TF", "layout_template_path", "")
+            template_file_name = UI.openpanel("Choose a Layout Template", layout_template_path, "Layout|*.layout||")
             puts "template_file_name: #{template_file_name}"
             return unless template_file_name
             doc = Layout::Document.new(template_file_name)
@@ -81,6 +82,12 @@ module CB_TF
             text.style = style
             doc.add_entity(text, default_layer, page)
             doc.save(layout_file_name)
+            layout_template_path = File.dirname(template_file_name)
+            while layout_template_path.index("\\")
+                layout_template_path["\\"]="/"
+            end
+            puts "saving layout_template_path: #{layout_template_path}"
+            Sketchup.write_default("TF", "layout_template_path", layout_template_path)
         end
 
         pages = doc.pages

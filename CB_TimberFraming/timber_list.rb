@@ -104,8 +104,8 @@ module CB_TF
 
   def CB_TF.make_timber_list
     begin
-
       model = Sketchup.active_model
+      path = File.dirname(model.path)
       file_format = Sketchup.read_default("TF", "list_file_format", "C")
       tally_by_tag = Sketchup.read_default("TF", "list_by_tag", 0) == 1
       case file_format
@@ -118,13 +118,13 @@ module CB_TF
           file_loaded("excel_constants")
         end
         excel.visible = false
-        tl_file_name = UI.savepanel("Save Timber List", "","*.xlsx")
+        tl_file_name = UI.savepanel("Save Timber List", path,"*.xlsx")
       when "C", "T"
         case file_format
         when "C"
-          tl_file_name = UI.savepanel("Save Timber List", "","timber_list.csv")
+          tl_file_name = UI.savepanel("Save Timber List", path,"timber_list.csv")
         when "T"
-          tl_file_name = UI.savepanel("Save Timber List", "","timber_list.txt")
+          tl_file_name = UI.savepanel("Save Timber List", path,"timber_list.txt")
         end  
         if tl_file_name
           while tl_file_name.index("\\")
