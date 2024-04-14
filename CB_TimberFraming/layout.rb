@@ -3,28 +3,29 @@ module CB_TF
     def CB_TF.send_shops_to_layout
         model = Sketchup.active_model
         scenes = model.pages
-        tf_iso_scene = nil
+        tf_3d_shops_scene = nil
         tf_shops_scene = nil
         qty = ""
         tsize = ""
         scenes.each_with_index do |scene, i|
-            if scene.name == "tf_shops"
+            if scene.name == "2D Shops"
                 tf_shops_scene = i
             end
-            if scene.name == "tf_iso"
-                tf_iso_scene = i
+            if scene.name == "3D Shops"
+                tf_3d_shops_scene = i
             end
         end
 
-        if tf_iso_scene == nil and tf_shops_scene == nil
+        if tf_3d_shops_scene == nil || tf_shops_scene == nil
             UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
+            puts "tf_3d_shops_scene: #{tf_3d_shops_scene}, tf_shops_scene: #{tf_shops_scene}"
             return
         end
 
-        # find the iso_timber, which is where we stashed the project name, qty, and size
+        # find the shop_3d_timber, which is where we stashed the project name, qty, and size
         project_name = nil
         model.entities.each do |ent|
-            if ent.name == "iso_timber"
+            if ent.name == "shop_3d_timber"
                 project_name = ent.get_attribute(JAD, "project_name")
                 qty = ent.get_attribute(JAD, "qty")
                 puts ("send_shops_to_layout qty= #{qty}")
@@ -36,7 +37,7 @@ module CB_TF
 
         puts "project_name: #{project_name}"
         unless project_name
-            UI.messagebox("This does not look like a shop drawing model (missing iso_timber)")
+            UI.messagebox("This does not look like a shop drawing model (missing 3D Timber)")
             return
         end
 
@@ -110,16 +111,16 @@ module CB_TF
         # page.set_layer_visibility(layer, true)
         pi = doc.page_info
 
-        # add iso viewport
+        # add 3D viewport
         # puts "pi: lm: #{pi.left_margin}, tm: #{pi.top_margin}, w: #{pi.width}, h:#{pi.height}"
         view_bounds = Geom::Bounds2d.new(14.125, 0.375, 2.0, 10.0)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
-        viewport.current_scene = tf_iso_scene + 1
+        viewport.current_scene = tf_3d_shops_scene + 1
         doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
         viewport.render if viewport.render_needed?
 
-        # add shops viewport
+        # add 2D viewport
         view_bounds = Geom::Bounds2d.new(1.125, 0.375, 13.0, 8.0)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_shops_scene + 1

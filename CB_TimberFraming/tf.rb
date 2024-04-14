@@ -311,18 +311,18 @@ module CB_TF
     save_back_edges = model.rendering_options["DrawBackEdges"]
 
     model.start_operation("make shop drawings", true)
-    # create styles, pages (scenes) and layers (tags) for shops and iso
+    # create styles, pages (scenes) and layers (tags) for 2d shops and 3s shops
     pages = model.pages
-    tf_shops_page = pages.add "tf_shops"
+    tf_shops_page = pages.add "2D Shops"
     tf_shops_page.transition_time = 0
-    tf_iso_page = pages.add "tf_iso"
-    tf_iso_page.transition_time = 0
+    tf_3d_shops_page = pages.add "3D Shops"
+    tf_3d_shops_page.transition_time = 0
     
     layers = model.layers
     tf_shops_layer = layers.add "tf_shops_layer"
-    tf_iso_layer = layers.add "tf_iso_layer"
+    tf_3d_shops_layer = layers.add "tf_3d_shops_layer"
     tf_shops_layer.visible = true
-    tf_iso_layer.visible = false
+    tf_3d_shops_layer.visible = false
     
     styles = model.styles
     tf_shops_style = nil
@@ -469,19 +469,19 @@ module CB_TF
     end
     # print ("joined.\n")
 
-    # create the Isometric view timber
-    iso_timber = model.entities.add_instance(shop_dwg[0].definition, [-20,0,0])
-    iso_timber.make_unique
-    iso_timber.name = "iso_timber"
-    iso_timber.layer = tf_iso_layer
-    iso_timber.set_attribute(JAD, "project_name", model.title) # stash these here so we can find them in the shop drawings file
+    # create the 3D view timber
+    shop_3d_timber = model.entities.add_instance(shop_dwg[0].definition, [-20,0,0])
+    shop_3d_timber.make_unique
+    shop_3d_timber.name = "shop_3d_timber"
+    shop_3d_timber.layer = tf_3d_shops_layer
+    shop_3d_timber.set_attribute(JAD, "project_name", model.title) # stash these here so we can find them in the shop drawings file
     if original.name != ""
       qty = 1
     else
       qty = original.definition.count_instances
     end
-    iso_timber.set_attribute(JAD, "qty", qty.to_s)
-    iso_timber = remove_stray_faces(iso_timber)
+    shop_3d_timber.set_attribute(JAD, "qty", qty.to_s)
+    shop_3d_timber = remove_stray_faces(shop_3d_timber)
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i
@@ -598,13 +598,13 @@ module CB_TF
       drawing_name = original.name + ".skp"
     end
     tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s
-    iso_timber.set_attribute(JAD, "tsize", tsize)
+    shop_3d_timber.set_attribute(JAD, "tsize", tsize)
     drawing_header = company_name + "  |  " + "Project: " + model.title + "  |  " + ts
     drawing_title = timber_name + "  -  " + tsize
     victims = Array.new
     model.entities.each do |e|
       next if shop_dwg.include? e 
-      next if e == iso_timber
+      next if e == shop_3d_timber
       next if e.instance_of? Sketchup::SectionPlane # because undo does not fix this
       victims.push e
     end
@@ -629,23 +629,23 @@ module CB_TF
     status = tf_shops_page.update
     pages.selected_page = tf_shops_page
 
-    tf_iso_style = nil
+    tf_3d_shops_style = nil
     styles.each do |s|
-      tf_iso_style = s if s.name == "tf_iso_style"
+      tf_3d_shops_style = s if s.name == "tf_3d_shops_style"
     end
-    unless tf_iso_style
-      puts "tf_iso_style not found.  Adding it."
+    unless tf_3d_shops_style
+      puts "tf_3d_shops_style not found.  Adding it."
       status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
-      tf_iso_style = styles["[Default Style]"]
-      tf_iso_style.name = "tf_iso_style"
-      tf_iso_style.description = "Auto-added by TF Extensions for Shop Drawings"
+      tf_3d_shops_style = styles["[Default Style]"]
+      tf_3d_shops_style.name = "tf_3d_shops_style"
+      tf_3d_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
     end
-    styles.selected_style = tf_iso_style
+    styles.selected_style = tf_3d_shops_style
 
-    tf_iso_layer.visible = true
+    tf_3d_shops_layer.visible = true
     tf_shops_layer.visible = false
     sel.clear
-    sel.add iso_timber
+    sel.add shop_3d_timber
     view = model.active_view
     view.camera = save_cam
     view.zoom(sel)
@@ -653,8 +653,8 @@ module CB_TF
     model.rendering_options["BackgroundColor"] = "white"
 
     styles.update_selected_style
-    tf_iso_page.use_style = tf_iso_style
-    status = tf_iso_page.update
+    tf_3d_shops_page.use_style = tf_3d_shops_style
+    status = tf_3d_shops_page.update
     pages.selected_page = tf_shops_page
 
     puts("showing file save dialog.  Drawing name: #{drawing_name}")
@@ -689,7 +689,7 @@ module CB_TF
       model.commit_operation
       Sketchup.undo
       model = Sketchup.active_model
-      pages.erase(tf_iso_page)
+      pages.erase(tf_3d_shops_page)
       pages.erase(tf_shops_page)
       view = model.active_view
       view.camera = save_cam
