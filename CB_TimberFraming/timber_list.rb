@@ -118,7 +118,7 @@ module CB_TF
           file_loaded("excel_constants")
         end
         excel.visible = false
-        tl_file_name = UI.savepanel("Save Timber List", path,"*.xlsx")
+        tl_file_name = UI.savepanel("Save Timber List", path,"timber_list.xlsx")
       when "C", "T"
         case file_format
         when "C"
