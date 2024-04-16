@@ -1,66 +1,94 @@
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
 module CB_TF
-    def CB_TF.send_shops_to_layout
-        model = Sketchup.active_model
-        scenes = model.pages
-        tf_3d_shops_scene = nil
-        tf_shops_scene = nil
-        qty = ""
-        tsize = ""
-        scenes.each_with_index do |scene, i|
-            if scene.name == "2D Shops"
-                tf_shops_scene = i
-            end
-            if scene.name == "3D Shops"
-                tf_3d_shops_scene = i
-            end
-        end
+    def CB_TF.bulk_shops_to_layout
+        message = <<~EOS
+        **** CAUTION *****
 
-        if tf_3d_shops_scene == nil || tf_shops_scene == nil
-            UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
-            puts "tf_3d_shops_scene: #{tf_3d_shops_scene}, tf_shops_scene: #{tf_shops_scene}"
+        All *.skp files in the folder you are about to select will be added to the layout doc. 
+        Any duplicated pages will be overwritten!  
+
+        Proceed?"
+        EOS
+        
+        result = UI.messagebox(message, MB_YESNO)
+        if result != IDYES
             return
         end
 
-        # find the shop_3d_timber, which is where we stashed the project name, qty, and size
+        shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
+        # filenames = UI.openpanel("Select SU files to send to Layout", shop_drawings_path, "Sketchup|*.skp||")
+        directory = UI.select_directory(title: "Select directory of files to send to Layout", directory: shop_drawings_path)
+        puts "Files in #{directory}:"
+        filenames = Dir.glob("#{directory}/*.skp")
+        project_name = ""
+        doc = nil
+        count = 0
+        filenames.each do |filename|
+            status = Sketchup.open_file(filename, with_status: true)
+            unless (status == Sketchup::Model::LOAD_STATUS_SUCCESS || status ==  Sketchup::Model::LOAD_STATUS_SUCCESS_MORE_RECENT)
+                UI.messagebox("Error load SU file #{filename}.  Aborting bulk shops to layout.")
+                return
+            end
+            model = Sketchup.active_model
+            if project_name == ""
+                project_name = get_project_name(model)
+                doc = open_or_create_layout_doc(project_name, File.dirname(model.path))
+                return unless doc
+            end
+            append_page_to_layout(model, doc, true)
+            count +=1
+        end
+        puts "#{count} pages added to #{project_name}"
+        UI.messagebox "#{count} pages added to Layout Doc #{project_name}"
+    end
+
+    def CB_TF.send_shops_to_layout
+        model = Sketchup.active_model
+
+        project_name = get_project_name(model)
+
+        doc = open_or_create_layout_doc(project_name, File.dirname(model.path))
+
+        append_page_to_layout(model, doc)
+        
+        puts "#{model.title} added to #{project_name}"
+        Sketchup.status_text = ""
+        UI.messagebox("Page #{model.title} added to #{project_name}")
+    end
+
+    def CB_TF.get_project_name(model)
+        # find the shop_3d_timber, which is where we stashed the project name
         project_name = nil
         model.entities.each do |ent|
             if ent.name == "shop_3d_timber"
                 project_name = ent.get_attribute(JAD, "project_name")
-                qty = ent.get_attribute(JAD, "qty")
-                puts ("send_shops_to_layout qty= #{qty}")
-                tsize = ent.get_attribute(JAD, "tsize")
-                puts ("send_shops_to_layout size= #{tsize}")
                 break
             end
         end
-
         puts "project_name: #{project_name}"
         unless project_name
             UI.messagebox("This does not look like a shop drawing model (missing 3D Timber)")
             return
-        end
+        end        
+        return project_name
+    end
 
-        unless model.modified?
-            save_status = model.save()
-            unless save_status
-                UI.messagebox("Shop drawing model must be saved before sending to layout")
-                return
-            end
-        end
-
-        layout_file_name = File.join(File.dirname(model.path), "#{project_name}.layout")
-
+    def CB_TF.open_or_create_layout_doc(project_name, path)
+        layout_file_name = File.join(path, "#{project_name}.layout")
         puts "layout_file_name: #{layout_file_name}"
-        Sketchup.status_text = "A page is being appended to the Layout doc (this can take a while)..."
         if layout_file_name && File.exist?(layout_file_name)
+            Sketchup.status_text = "Opening the Layout Doc (this can take a while)..."
             puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before  Layout::Document.open()"
             doc =  Layout::Document.open(layout_file_name)
             puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After  Layout::Document.open()"
-            default_layer = nil
-            layers = doc.layers
-            layers.each { |layer| default_layer = layer if layer.name == "Default" }
+            begin
+                doc.save
+            rescue ArgumentError  => err
+                UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
+                return nil
+            end
         else
+            Sketchup.status_text = "Creating a new Layout Doc"
             puts "doc not found, creating new"
             layout_template_path =  Sketchup.read_default("TF", "layout_template_path", "")
             template_file_name = UI.openpanel("Choose a Layout Template", layout_template_path, "Layout|*.layout||")
@@ -90,17 +118,72 @@ module CB_TF
             puts "saving layout_template_path: #{layout_template_path}"
             Sketchup.write_default("TF", "layout_template_path", layout_template_path)
         end
+       
+        return doc        
+    end
+    
+    def CB_TF.append_page_to_layout(model, doc, bulk = false)
+        Sketchup.status_text = "Adding page #{model.title} to Layout Doc"
+        scenes = model.pages
+        tf_3d_shops_scene = nil
+        tf_shops_scene = nil
+        qty = ""
+        tsize = ""
+        scenes.each_with_index do |scene, i|
+            if scene.name == "2D Shops"
+                tf_shops_scene = i
+            end
+            if scene.name == "3D Shops"
+                tf_3d_shops_scene = i
+            end
+        end
+
+        if tf_3d_shops_scene == nil || tf_shops_scene == nil
+            if bulk
+                puts "Skipping file #{model.title}.  It does not appear to be a shop drawing (special scenes not found):"
+                puts "\ttf_3d_shops_scene: #{tf_3d_shops_scene}, tf_shops_scene: #{tf_shops_scene}"
+            else
+                UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
+            end
+            return
+        end
+
+        # find the shop_3d_timber, which is where we stashed the qty and size
+        model.entities.each do |ent|
+            if ent.name == "shop_3d_timber"
+                qty = ent.get_attribute(JAD, "qty")
+                tsize = ent.get_attribute(JAD, "tsize")
+                puts ("send_shops_to_layout qty= #{qty}, size= #{tsize}")
+                break
+            end
+        end
+
+        unless model.modified?
+            save_status = model.save()
+            unless save_status
+                UI.messagebox("Shop drawing model must be saved before sending to layout")
+                return
+            end
+        end
+
+        default_layer = nil
+        layers = doc.layers
+        layers.each { |layer| default_layer = layer if layer.name == "Default" }
 
         pages = doc.pages
         existing_page = nil
         pages.each { |page| existing_page = page if page.name == model.title }
         if existing_page
-            result = UI.messagebox("Page '#{model.title}' already exists.  Overwrite?", MB_YESNO)
-            if result == IDYES
+            if bulk
                 result = pages.remove(existing_page)
             else
-                UI.messagebox("Page not saved to layout")
-                return
+                result = UI.messagebox("Page '#{model.title}' already exists.  Overwrite?", MB_YESNO)
+                if result == IDYES
+                    result = pages.remove(existing_page)
+                else
+                    UI.messagebox("Page not saved to layout")
+                    return
+                end
             end
         end
 
@@ -132,12 +215,6 @@ module CB_TF
         # set qty if present and so configured
         show_qty_and_size = Sketchup.read_default("TF", "qty", 1).to_i
         if show_qty_and_size==1 then
-                # auto_texts = doc.auto_text_definitions  # this doesn't work, as the auto_text is global across all pages.
-                # auto_texts.each do |auto_text|
-                #     if auto_text.tag== "<Qty>"
-                #         auto_text.custom_text = qty
-                #     end
-                # end
             unless tsize == ""
                 sq_x_pos = Sketchup.read_default("TF", "sq_x_pos", 1).to_f
                 sq_y_pos = Sketchup.read_default("TF", "sq_y_pos", 1).to_f
@@ -164,17 +241,11 @@ module CB_TF
         # add_auto_dimensions(viewport)
 
         begin
-            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before document save"
             doc.save
-            puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After document save"
         rescue ArgumentError  => err
             UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
             return
         end
-        puts "#{model.title} added to #{project_name}"
-        Sketchup.status_text = ""
-        UI.messagebox("Page #{model.title} added to #{project_name}")
-
     end
 
 

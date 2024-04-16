@@ -1008,6 +1008,7 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Peg Report") {CB_TF.peg_report}
   tf_menu.add_item("DoD Report") {CB_TF.dod_report}
   tf_menu.add_item("Send Shops to Layout") {CB_TF.send_shops_to_layout}
+  tf_menu.add_item("Send Shops to Layout (BULK)") {CB_TF.bulk_shops_to_layout}
   peg_tool_item = tf_menu.add_item("TF Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
   tf_menu.set_validation_proc(peg_tool_item) {CB_TF.peg_tool_valid_proc}
   stretch_tool_item = tf_menu.add_item("TF Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
