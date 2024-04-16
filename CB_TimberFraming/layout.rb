@@ -1,14 +1,15 @@
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
 module CB_TF
     def CB_TF.bulk_shops_to_layout
-        message = <<~EOS
+        message = <<~MSG
         **** CAUTION *****
 
-        All *.skp files in the folder you are about to select will be added to the layout doc. 
-        Any duplicated pages will be overwritten!  
-
+        All *.skp files in the folder you are about 
+        to select will be added to the layout doc. 
+        This can take a while.
+       
         Proceed?"
-        EOS
+        MSG
         
         result = UI.messagebox(message, MB_YESNO)
         if result != IDYES
@@ -35,8 +36,12 @@ module CB_TF
                 doc = open_or_create_layout_doc(project_name, File.dirname(model.path))
                 return unless doc
             end
-            append_page_to_layout(model, doc, true)
-            count +=1
+            result = append_page_to_layout(model, doc, true)
+            if result == true
+                count +=1
+            elsif result == IDCANCEL
+                break
+            end
         end
         puts "#{count} pages added to #{project_name}"
         UI.messagebox "#{count} pages added to Layout Doc #{project_name}"
@@ -174,16 +179,18 @@ module CB_TF
         existing_page = nil
         pages.each { |page| existing_page = page if page.name == model.title }
         if existing_page
-            if bulk
-                result = pages.remove(existing_page)
+            result = UI.messagebox("Page '#{model.title}' already exists.  Overwrite?", MB_YESNOCANCEL )
+            if result == IDYES
+                pages.remove(existing_page)
             else
-                result = UI.messagebox("Page '#{model.title}' already exists.  Overwrite?", MB_YESNO)
-                if result == IDYES
-                    result = pages.remove(existing_page)
+                if bulk
+                    if result == IDCANCEL
+                        return IDCANCEL
+                    end
                 else
                     UI.messagebox("Page not saved to layout")
-                    return
                 end
+                return false
             end
         end
 
@@ -246,6 +253,7 @@ module CB_TF
             UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
             return
         end
+        return true
     end
 
 
