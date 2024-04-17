@@ -1,11 +1,23 @@
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
 module CB_TF
     def CB_TF.bulk_shops_to_layout
+        model = Sketchup.active_model
+        unless shop_drawing_model?(model)
+            UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
+            return
+        end
+        first_file_name = model.path
+        directory = File.dirname(first_file_name)
+        project_name = get_project_name(model)
+
         message = <<~MSG
         **** CAUTION *****
 
-        All *.skp files in the folder you are about 
-        to select will be added to the layout doc. 
+        All *.skp files in the folder
+        #{directory}
+        will be added to the layout doc
+        #{project_name}.layout 
+
         This can take a while.
        
         Proceed?"
@@ -16,26 +28,30 @@ module CB_TF
             return
         end
 
-        shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
-        # filenames = UI.openpanel("Select SU files to send to Layout", shop_drawings_path, "Sketchup|*.skp||")
-        directory = UI.select_directory(title: "Select directory of files to send to Layout", directory: shop_drawings_path)
-        puts "Files in #{directory}:"
-        filenames = Dir.glob("#{directory}/*.skp")
-        project_name = ""
-        doc = nil
+        doc = open_or_create_layout_doc(project_name, File.dirname(first_file_name))
+        return unless doc
+
         count = 0
+
+        result = append_page_to_layout(model, doc, true)
+        if result == true
+            count +=1
+        elsif result == IDCANCEL
+            return
+        end
+
+        directory = directory.gsub("\\", "/")
+        first_file_name = first_file_name.gsub("\\", "/")
+        filenames = Dir.glob("#{directory}/*.skp")
         filenames.each do |filename|
+            puts "filename: #{filename}"
+            next if filename == first_file_name
             status = Sketchup.open_file(filename, with_status: true)
             unless (status == Sketchup::Model::LOAD_STATUS_SUCCESS || status ==  Sketchup::Model::LOAD_STATUS_SUCCESS_MORE_RECENT)
                 UI.messagebox("Error load SU file #{filename}.  Aborting bulk shops to layout.")
                 return
             end
             model = Sketchup.active_model
-            if project_name == ""
-                project_name = get_project_name(model)
-                doc = open_or_create_layout_doc(project_name, File.dirname(model.path))
-                return unless doc
-            end
             result = append_page_to_layout(model, doc, true)
             if result == true
                 count +=1
@@ -49,7 +65,10 @@ module CB_TF
 
     def CB_TF.send_shops_to_layout
         model = Sketchup.active_model
-
+        unless shop_drawing_model?(model)
+            UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
+            return
+        end
         project_name = get_project_name(model)
 
         doc = open_or_create_layout_doc(project_name, File.dirname(model.path))
@@ -58,15 +77,15 @@ module CB_TF
         
         puts "#{model.title} added to #{project_name}"
         Sketchup.status_text = ""
-        UI.messagebox("Page #{model.title} added to #{project_name}")
+        UI.messagebox("Page #{model.title} added to \"#{project_name}.layout\"")
     end
 
     def CB_TF.get_project_name(model)
         # find the shop_3d_timber, which is where we stashed the project name
         project_name = nil
-        model.entities.each do |ent|
-            if ent.name == "shop_3d_timber"
-                project_name = ent.get_attribute(JAD, "project_name")
+        model.entities.grep(Sketchup::ComponentInstance) do |ci|
+            if ci.name == "shop_3d_timber"
+                project_name = ci.get_attribute(JAD, "project_name")
                 break
             end
         end
@@ -76,6 +95,21 @@ module CB_TF
             return
         end        
         return project_name
+    end
+
+    def CB_TF.shop_drawing_model?(model)
+        scenes = model.pages
+        tf_3d_shops_scene = nil
+        tf_shops_scene = nil
+        scenes.each_with_index do |scene, i|
+            if scene.name == "2D Shops"
+                tf_shops_scene = i
+            end
+            if scene.name == "3D Shops"
+                tf_3d_shops_scene = i
+            end
+        end        
+        return tf_3d_shops_scene != nil && tf_shops_scene != nil
     end
 
     def CB_TF.open_or_create_layout_doc(project_name, path)
@@ -154,10 +188,10 @@ module CB_TF
         end
 
         # find the shop_3d_timber, which is where we stashed the qty and size
-        model.entities.each do |ent|
-            if ent.name == "shop_3d_timber"
-                qty = ent.get_attribute(JAD, "qty")
-                tsize = ent.get_attribute(JAD, "tsize")
+        model.entities.grep(Sketchup::ComponentInstance) do |ci|
+            if ci.name == "shop_3d_timber"
+                qty = ci.get_attribute(JAD, "qty")
+                tsize = ci.get_attribute(JAD, "tsize")
                 puts ("send_shops_to_layout qty= #{qty}, size= #{tsize}")
                 break
             end
