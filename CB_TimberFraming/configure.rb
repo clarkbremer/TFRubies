@@ -9,7 +9,7 @@ module CB_TF
         :scrollable => true,
         :resizable => false,
         :width => 700,
-        :height => 700,
+        :height => 800,
         :left => 200,
         :top => 200,
         :style => UI::HtmlDialog::STYLE_DIALOG
@@ -34,6 +34,14 @@ module CB_TF
         sq_font_size: Sketchup.read_default("TF", "sq_font_size", "18"),
         sq_rotate: Sketchup.read_default("TF", "sq_rotate", "270").to_i,
         sq_bold: Sketchup.read_default("TF", "sq_bold", true),
+        vp2dx: Sketchup.read_default("TF", "vp2dx", 1.125),
+        vp2dy: Sketchup.read_default("TF", "vp2dy", 0.375),
+        vp2dw: Sketchup.read_default("TF", "vp2dw", 13.0),
+        vp2dh: Sketchup.read_default("TF", "vp2dh", 8.0), 
+        vp3dx: Sketchup.read_default("TF", "vp3dx", 14.125),
+        vp3dy: Sketchup.read_default("TF", "vp3dy", 0.375),
+        vp3dw: Sketchup.read_default("TF", "vp3dw", 2.0),
+        vp3dh: Sketchup.read_default("TF", "vp3dh", 10.0),
       }.to_json,
       javascript: File.read(File.join(path, "configure.js")),
       stylesheet: File.read(File.join(path, "configure.css"))
@@ -60,6 +68,14 @@ module CB_TF
       Sketchup.write_default("TF", "sq_font_size", data["sq_font_size"])
       Sketchup.write_default("TF", "sq_rotate", data["sq_rotate"])
       Sketchup.write_default("TF", "sq_bold", data["sq_bold"])
+      Sketchup.write_default("TF", "vp2dx", data["vp2dx"])
+      Sketchup.write_default("TF", "vp2dy", data["vp2dy"])
+      Sketchup.write_default("TF", "vp2dw", data["vp2dw"])
+      Sketchup.write_default("TF", "vp2dh", data["vp2dh"])
+      Sketchup.write_default("TF", "vp3dx", data["vp3dx"])
+      Sketchup.write_default("TF", "vp3dy", data["vp3dy"])
+      Sketchup.write_default("TF", "vp3dw", data["vp3dw"])
+      Sketchup.write_default("TF", "vp3dh", data["vp3dh"])
     }
     dialog.add_action_callback("tf_cancel") { |action_context|
       puts "User canceled"

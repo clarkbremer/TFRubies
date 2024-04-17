@@ -18,5 +18,17 @@ div.settings {
   grid-template-columns: 1fr 1fr;
   grid-gap:5px;
 }
+div.viewports {
+  font-family: arial, sans-serif;
+}
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+.center_text {
+  text-align: center;
+}
+
 div.settings label       { text-align:right; }
 div.settings input       { width:max-content; }
+input.viewport             { width: 64px;}

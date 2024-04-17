@@ -202,8 +202,11 @@ module CB_TF
         pi = doc.page_info
 
         # add 3D viewport
-        # puts "pi: lm: #{pi.left_margin}, tm: #{pi.top_margin}, w: #{pi.width}, h:#{pi.height}"
-        view_bounds = Geom::Bounds2d.new(14.125, 0.375, 2.0, 10.0)
+        vp3dx = Sketchup.read_default("TF", "vp3dx", 14.125).to_f
+        vp3dy = Sketchup.read_default("TF", "vp3dy", 0.375).to_f
+        vp3dw = Sketchup.read_default("TF", "vp3dw", 2.0).to_f
+        vp3dh = Sketchup.read_default("TF", "vp3dh", 10.0).to_f
+        view_bounds = Geom::Bounds2d.new(vp3dx, vp3dy, vp3dw, vp3dh)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_3d_shops_scene + 1
         doc.add_entity( viewport, default_layer, page )
@@ -211,7 +214,11 @@ module CB_TF
         viewport.render if viewport.render_needed?
 
         # add 2D viewport
-        view_bounds = Geom::Bounds2d.new(1.125, 0.375, 13.0, 8.0)
+        vp2dx = Sketchup.read_default("TF", "vp2dx", 1.125).to_f
+        vp2dy = Sketchup.read_default("TF", "vp2dy", 0.375).to_f
+        vp2dw = Sketchup.read_default("TF", "vp2dw", 13.0).to_f
+        vp2dh = Sketchup.read_default("TF", "vp2dh", 8.0).to_f
+        view_bounds = Geom::Bounds2d.new(vp2dx, vp2dy, vp2dw, vp2dh)
         viewport = Layout::SketchUpModel.new(model.path, view_bounds)
         viewport.current_scene = tf_shops_scene + 1
         doc.add_entity( viewport, default_layer, page )

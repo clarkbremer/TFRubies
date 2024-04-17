@@ -89,6 +89,30 @@ document.onreadystatechange = function () {
       ci = document.getElementById('sq_boldN');
       ci.checked = true;
     }    
+    
+    ci = document.getElementById('vp2dx');
+    ci.value = data.vp2dx;
+    
+    ci = document.getElementById('vp2dy');
+    ci.value = data.vp2dy;
+    
+    ci = document.getElementById('vp2dw');
+    ci.value = data.vp2dw;
+    
+    ci = document.getElementById('vp2dh');
+    ci.value = data.vp2dh;
+        
+    ci = document.getElementById('vp3dx');
+    ci.value = data.vp3dx;
+
+    ci = document.getElementById('vp3dy');
+    ci.value = data.vp3dy;
+
+    ci = document.getElementById('vp3dw');
+    ci.value = data.vp3dw;
+
+    ci = document.getElementById('vp3dh');
+    ci.value = data.vp3dh;
   }
 }
 
@@ -157,6 +181,31 @@ function save_data() {
 
   ci = document.getElementById('sq_boldY');
   data.sq_bold = ci.checked;  
+
+  ci = document.getElementById('vp2dx');
+  data.vp2dx = ci.value;
+
+  ci = document.getElementById('vp2dy');
+  data.vp2dy = ci.value;
+
+  ci = document.getElementById('vp2dw');
+  data.vp2dw = ci.value;
+
+  ci = document.getElementById('vp2dh');
+  data.vp2dh = ci.value;
+
+  ci = document.getElementById('vp3dx');
+  data.vp3dx = ci.value;
+
+  ci = document.getElementById('vp3dy');
+  data.vp3dy = ci.value;
+
+  ci = document.getElementById('vp3dw');
+  data.vp3dw = ci.value;
+
+  ci = document.getElementById('vp3dh');
+  data.vp3dh = ci.value;
+
 
   sketchup.tf_save_config(data);
 }
