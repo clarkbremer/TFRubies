@@ -28,7 +28,10 @@ div.viewports {
 .center_text {
   text-align: center;
 }
+.bold_text {
+  font-weight: bold;
+}
 
 div.settings label       { text-align:right; }
-div.settings input       { width:max-content; }
-input.viewport             { width: 64px;}
+div.settings input       { width:max-content;  background-color: #8bf1f8;}
+input.viewport           { width: 64px; background-color: #8bf1f8;}

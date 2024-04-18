@@ -1,6 +1,7 @@
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/layout.rb"
+require 'date'
 module CB_TF
-    def CB_TF.bulk_shops_to_layout
+    def CB_TF.batch_shops_to_layout
         model = Sketchup.active_model
         unless shop_drawing_model?(model)
             UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
@@ -20,7 +21,7 @@ module CB_TF
 
         This can take a while.
        
-        Proceed?"
+        Proceed?
         MSG
         
         result = UI.messagebox(message, MB_YESNO)
@@ -48,7 +49,7 @@ module CB_TF
             next if filename == first_file_name
             status = Sketchup.open_file(filename, with_status: true)
             unless (status == Sketchup::Model::LOAD_STATUS_SUCCESS || status ==  Sketchup::Model::LOAD_STATUS_SUCCESS_MORE_RECENT)
-                UI.messagebox("Error load SU file #{filename}.  Aborting bulk shops to layout.")
+                UI.messagebox("Error load SU file #{filename}.  Aborting batch shops to layout.")
                 return
             end
             model = Sketchup.active_model
@@ -161,7 +162,7 @@ module CB_TF
         return doc        
     end
     
-    def CB_TF.append_page_to_layout(model, doc, bulk = false)
+    def CB_TF.append_page_to_layout(model, doc, batch = false)
         Sketchup.status_text = "Adding page #{model.title} to Layout Doc"
         scenes = model.pages
         tf_3d_shops_scene = nil
@@ -178,7 +179,7 @@ module CB_TF
         end
 
         if tf_3d_shops_scene == nil || tf_shops_scene == nil
-            if bulk
+            if batch
                 puts "Skipping file #{model.title}.  It does not appear to be a shop drawing (special scenes not found):"
                 puts "\ttf_3d_shops_scene: #{tf_3d_shops_scene}, tf_shops_scene: #{tf_shops_scene}"
             else
@@ -217,7 +218,7 @@ module CB_TF
             if result == IDYES
                 pages.remove(existing_page)
             else
-                if bulk
+                if batch
                     if result == IDCANCEL
                         return IDCANCEL
                     end
