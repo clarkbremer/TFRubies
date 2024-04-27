@@ -6,7 +6,8 @@ module CB_TF
   ##  Helper Classes:
   ##
   class CountedTimber
-    def initialize(name, count, w, d, l, ft, dod)
+    def initialize(id, name, count, w, d, l, ft, dod)
+      @id = id
       @name = name
       @count = count
       @w = w
@@ -15,34 +16,34 @@ module CB_TF
       @ft = ft
       @dod = dod
     end
-    attr_reader :name, :count, :w, :d, :l, :ft, :dod
-    attr_writer :name, :count, :w, :d, :l, :ft, :dod
+    attr_reader :id, :name, :count, :w, :d, :l, :ft, :dod
+    attr_writer :id, :name, :count, :w, :d, :l, :ft, :dod
   end
 
   class TimberList
     def initialize
       @list = Array.new
-      @tdims = Array.new #Timber dimenions
     end
 
     def add(timber, min_extra_timber_length, metric, roundup)
+      tdims = Array.new #Timber dimenions
       if timber.name == "" then
         name = timber.definition.name
       else
         name = timber.name
       end
       dod = timber.definition.get_attribute(JAD, "DoD", 0.0)
-      found = false
+      duplicate = false
       @list.each do |ct|
           if ct.name == name
           ct.count = ct.count + 1
-          found = true
+          duplicate = true
           break
         end
       end
-      if not found
-        CB_TF.get_dimensions(timber, min_extra_timber_length, metric, roundup, @tdims)
-          ct = CountedTimber.new(name, 1, @tdims[0], @tdims[1], @tdims[2], @tdims[3], dod)
+      unless duplicate
+        CB_TF.get_dimensions(timber, min_extra_timber_length, metric, roundup, tdims)
+          ct = CountedTimber.new(timber.persistent_id, name, 1, tdims[0], tdims[1], tdims[2], tdims[3], dod)
         @list.push(ct)
       end
     end
@@ -53,6 +54,18 @@ module CB_TF
 
     def length
       @list.length
+    end
+
+    def count
+      @list.length
+    end
+
+    def [](index)
+      @list[index]
+    end
+
+    def first
+      @list.first
     end
 
     def sort!
@@ -101,6 +114,43 @@ module CB_TF
   class ExcelConst
   end
 
+  def CB_TF.collect_timber_lists(min_extra_timber_length, metric, roundup)
+    # Collect all the info from the model
+    cl = TimberList.new  # all timbers for condensed list
+    ul = TimberList.new  # unnamed timbers
+    nl = TimberList.new  # named timbers
+
+    model = Sketchup.active_model
+    timber_total = model.entities.grep(Sketchup::ComponentInstance).count
+
+    timber_count=0
+    model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
+      next if timber.hidden?
+      next if not timber.layer.visible?
+      if timber.name == ""
+        # Unnamed Timbers
+        # puts "adding unnamed timber: #{timber.definition.name}"
+        ul.add(timber, min_extra_timber_length, metric, roundup)
+      else
+        # Named timbers.  Assume they're unique
+        # puts "adding named timber: #{timber.name}"
+        nl.add(timber, min_extra_timber_length, metric, roundup)
+      end 
+      cl.add(timber, min_extra_timber_length, metric, roundup)   # all timbers
+      timber_count = timber_count+1
+      #print(timber_count.to_s + " timbers added\n");
+      Sketchup.status_text = "Creating Timber List: " + timber_count.to_s + " / " + timber_total.to_s
+    end
+
+    print("sorting\n")
+    nl.sort!
+    ul.sort!
+    print("condensing\n")
+    cl.condense!
+    puts "collected #{nl.count} timbers, #{ul.count} scantlings, #{cl.count} unique sizes"
+
+    return cl, ul, nl
+  end
 
   def CB_TF.make_timber_list
     begin
@@ -118,7 +168,6 @@ module CB_TF
           file_loaded("excel_constants")
         end
         excel.visible = false
-        tl_file_name = UI.savepanel("Save Timber List", path,"timber_list.xlsx")
       when "C", "T"
         case file_format
         when "C"
@@ -131,20 +180,17 @@ module CB_TF
             tl_file_name["\\"]="/"
           end
         end
-      end
-      if tl_file_name
-        print("saving timber list as:"+tl_file_name + "\n")
-        puts "Using tally by tag" if tally_by_tag
-        begin
-          File.delete(tl_file_name)
-        rescue
+        if tl_file_name
+          puts("saving timber list as: #{tl_file_name}")
+          puts("Using tally by tag") if tally_by_tag
+          begin
+            File.delete(tl_file_name)
+          rescue
+          end
+        else
+          UI.messagebox("Timber List NOT saved!")
+          return
         end
-      else
-        UI.messagebox("Timber List NOT saved!")
-        if file_format == "X"
-          excel.Quit
-        end
-        return
       end
 
       min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
@@ -215,48 +261,13 @@ module CB_TF
         row = 4
       end
 
-      # Collect all the info from the model
-      cl = TimberList.new    # all timbers for condensed list
-      ul = TimberList.new  # unnamed timbers
-      nl = TimberList.new  # named timbers
-      timber_total=0
-      model.entities.each do |timber|
-        next if not timber.instance_of? Sketchup::ComponentInstance
-        timber_total = timber_total+1
-      end
-
-      timber_count=0
-      model.active_entities.each do |timber|
-        next if not timber.instance_of? Sketchup::ComponentInstance
-        next if timber.hidden?
-        next if not timber.layer.visible?
-        if timber.name == ""
-          # Unnamed Timbers
-          # puts "adding unnamed timber: #{timber.definition.name}"
-          ul.add(timber, min_extra_timber_length, metric, roundup)
-        else
-          # Named timbers.  Assume they're unique
-          # puts "adding named timber: #{timber.name}"
-          nl.add(timber, min_extra_timber_length, metric, roundup)
-        end 
-        cl.add(timber, min_extra_timber_length, metric, roundup)   # all timbers
-        timber_count = timber_count+1
-        #print(timber_count.to_s + " timbers added\n");
-        Sketchup.status_text = "Creating Timber List: " + timber_count.to_s + " / " + timber_total.to_s
-      end
-
-      print("sorting\n")
-      nl.sort!
-      ul.sort!
-      print("condensing\n")
-      cl.condense!
-
+      cl, ul, nl = collect_timber_lists(min_extra_timber_length, metric, roundup)
+      
       if tally_by_tag
         layer_lists = {}
-        model.active_entities.each do |timber|
-          next if not timber.instance_of? Sketchup::ComponentInstance
+        model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
           next if timber.hidden?
-          next if not timber.layer.visible?
+          next unless timber.layer.visible?
           ll = timber.layer
           unless layer_lists.has_key? ll
             layer_lists[ll]=TimberList.new
@@ -264,12 +275,12 @@ module CB_TF
           layer_lists[ll].add(timber, min_extra_timber_length, metric, roundup)
           # print("Added timber to tag #{ll.name}\n");
         end
-
+  
         print("condensing\n")
         layer_lists.each_value do |list|
           list.condense!
         end
-      end
+      end  
 
       print("exporting\n")
       case file_format
@@ -589,14 +600,6 @@ module CB_TF
             row+=2
           end
         end # tally_by_tag
-
-        begin
-          windows_filename = tl_file_name.gsub(/\//, '\\')
-          puts "windows file name: #{windows_filename}"
-          workbook.saveas(windows_filename)
-        rescue
-          UI.messagebox("Error saving Excel File (might be open in excel)")
-        end
         workbook.worksheets(1).activate
 
       when "C"  # csv mode
@@ -786,7 +789,7 @@ module CB_TF
 
         tl_file.close
       end  # file format case
-      print("timber list saved\n")
+      print("Timber list created.\n")
       begin
         rescue
           print("TF Rubies: Error creating timber list: " + $!.message + "\n")

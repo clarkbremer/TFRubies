@@ -25,9 +25,7 @@ module CB_TF
         MSG
         
         result = UI.messagebox(message, MB_YESNO)
-        if result != IDYES
-            return
-        end
+        return unless result == IDYES
 
         doc = open_or_create_layout_doc(project_name, File.dirname(first_file_name))
         return unless doc
@@ -43,7 +41,7 @@ module CB_TF
 
         directory = directory.gsub("\\", "/")
         first_file_name = first_file_name.gsub("\\", "/")
-        filenames = Dir.glob("#{directory}/*.skp")
+        filenames = Dir["#{directory}/*.skp"].sort_by{ |f| File.mtime(f) }
         filenames.each do |filename|
             puts "filename: #{filename}"
             next if filename == first_file_name
@@ -272,7 +270,7 @@ module CB_TF
                 sq_bold = Sketchup.read_default("TF", "sq_bold", true)
 
                 anchor = Geom::Point2d.new(sq_x_pos, sq_y_pos)
-                if qty == "" || qty == "1"
+                if qty == "" || qty == "1" || qty == nil
                     text = Layout::FormattedText.new("#{tsize}", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
                 else
                     text = Layout::FormattedText.new("#{tsize} (#{qty})", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
