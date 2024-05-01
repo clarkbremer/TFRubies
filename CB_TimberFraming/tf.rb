@@ -275,7 +275,9 @@ module CB_TF
       tv0 = edge.vertices[0].position
       tv1 = edge.vertices[1].position
       next if (tv0.z == 0) and (tv1.z == 0) # edges on the cutting face are exempt
+      next if edge.curve # egdes that are part of a curve, like a peg hole, are exempt.
       if edge.faces.count <= 1
+        puts "has_leaks? found bad edge: #{edge}"
         return true
       end
     end
@@ -366,10 +368,9 @@ module CB_TF
     new_timber = model.entities.add_instance(original.definition, original.transformation)
     new_timber.make_unique  # don't mess up the original!
 
-    # On any of our own tenons. do these tasks
+    # On any of our own tenons, do these tasks
     new_timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
       next unless has_attribute?(tenon.definition, "tenon")  # only tenons
-      tenon.set_attribute(JAD, "mine", true) # mark it as our own
       # add peg marks 
       tenon.definition.entities.grep(Sketchup::Face) do |peg|
         next unless has_attribute?(peg, "peg")
@@ -389,6 +390,7 @@ module CB_TF
         if (tv0.z == 0) and (tv1.z == 0) then
           #print("found a tenon edge to hide - verts:", tv0.to_s, tv1.to_s, "\n")
           tedge.hidden = true
+          tedge.set_attribute(JAD, "keep", true)
           v0.transform!tenon.transformation
           v1.transform!tenon.transformation
           #print("in local space:", v0.to_s, v1.to_s, "\n")
@@ -444,7 +446,7 @@ module CB_TF
 
         if face_test_passed
           # found one!  Now create the mortise in the new timber
-          if has_leaks?(tenon)
+          if !batch && has_leaks?(tenon)
             UI.messagebox("Oops.  Looks like one of your joints (#{tenon.definition.name}) is not solid.  That could mess up the shop drawings.")
           end
           # start by creating a temporary copy of the mortise in the correct position, but in global space
@@ -834,7 +836,7 @@ module CB_TF
 
     victims = []
     shop_definition.entities.grep(Sketchup::ComponentInstance) do |joint|
-      if (!joint.hidden? && !is_2d?(joint.definition) && !has_attribute?(joint, "mine"))
+      if (!joint.hidden? && !is_2d?(joint.definition))
         victims << joint
       end
     end
