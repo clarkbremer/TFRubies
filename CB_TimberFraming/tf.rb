@@ -3,6 +3,7 @@
 ##  Copyright (c) 2008 - 2024 Clark Bremer
 ##  clarkbremer@gmail.com
 ##
+##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
 ##
 
@@ -269,6 +270,17 @@ module CB_TF
     attr_reader :face, :ctr
   end
 
+  def CB_TF.has_leaks?(joint)
+    joint.definition.entities.grep(Sketchup::Edge) do |edge|
+      tv0 = edge.vertices[0].position
+      tv1 = edge.vertices[1].position
+      next if (tv0.z == 0) and (tv1.z == 0) # edges on the cutting face are exempt
+      if edge.faces.count <= 1
+        return true
+      end
+    end
+    return false
+  end
 
   ##########################################################
   ##  Make Shop Drawings
@@ -432,6 +444,9 @@ module CB_TF
 
         if face_test_passed
           # found one!  Now create the mortise in the new timber
+          if has_leaks?(tenon)
+            UI.messagebox("Oops.  Looks like one of your joints (#{tenon.definition.name}) is not solid.  That could mess up the shop drawings.")
+          end
           # start by creating a temporary copy of the mortise in the correct position, but in global space
           tmortise = model.entities.add_instance(tenon.definition, [0,0,0]) # starts at global origin
           tmortise.transform!tenon.transformation
@@ -726,16 +741,17 @@ module CB_TF
       # now put everyting back the way we found it!
       puts "putting it back"
       model.commit_operation
-      model.save # This is still the temp file - just so it doesn't bug the user about it
-      model.close # Because the mac leaves this open.
+      model.save # This is still the temp file - just so it doesn't bug the user about saving it
+      if Sketchup.platform == :platform_osx
+        model.close # Because the mac leaves this open.
+      end
       status = Sketchup.open_file(original_path, with_status: true)
       if status != Sketchup::Model::LOAD_STATUS_SUCCESS
         UI.messagebox("Error opening original model")
+        return
       end
       model = Sketchup.active_model
     end
-
-
   end  # make shop drawings
 
   def CB_TF.batch_make_shop_drawings
@@ -765,9 +781,8 @@ module CB_TF
     result = UI.messagebox(message, MB_YESNO)
     return unless result == IDYES
 
-    result = UI.select_directory(title: "Select Shop Drawing Folder", directory: shop_drawings_path)
-    return unless result
-    shop_drawings_path = result
+    shop_drawings_path = UI.select_directory(title: "Select Shop Drawing Folder", directory: shop_drawings_path)
+    return unless shop_drawings_path
     Sketchup.write_default("TF", "shop_drawings_path", shop_drawings_path)
 
 
@@ -913,6 +928,11 @@ module CB_TF
   ##
   def CB_TF.create_joint
     return nil unless sel=selected_component
+    if has_leaks?(sel)
+      puts "create_joint aborted due to leaks"
+      UI.messagebox("The component must be solid (except for the cutting face)")
+      return
+    end
     dfn = sel.definition
     unless dfn.behavior.is2d?
       #print ("was not set to glue - setting it now.\n")
