@@ -126,7 +126,7 @@ module CB_TF
                 return nil
             end
         else
-            Sketchup.status_text = "Creating a new Layout Doc"
+            Sketchup.status_text = "Choose a Layout Template"
             puts "doc not found, creating new"
             layout_template_path =  Sketchup.read_default("TF", "layout_template_path", "")
             template_file_name = UI.openpanel("Choose a Layout Template", layout_template_path, "Layout|*.layout||")

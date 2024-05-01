@@ -424,8 +424,10 @@ module CB_TF
         worksheet.columns("g").columnwidth = 10   # BF
         if metric
           worksheet.columns("g").NumberFormat = "0.000"
+          worksheet.columns("q").NumberFormat = "0.000"
         else
           worksheet.columns("g").NumberFormat = "0.00"
+          worksheet.columns("q").NumberFormat = "0.00"
         end
 
         row=1
@@ -515,7 +517,7 @@ module CB_TF
         worksheet.cells(row,17).formula = "=G#{row-1} * ( 1 + $J$#{sparerow})"
         row+=1
         worksheet.cells(row,17).formula = "=Q#{row-1} - Q#{row-2}"
-        worksheet.cells(row,17).NumberFormat = "0.0;[red]0.0"
+        worksheet.cells(row,17).NumberFormat = "0.00;[red]0.00"
         # end tally section
 
         if tally_by_tag

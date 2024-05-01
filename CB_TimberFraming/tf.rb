@@ -698,7 +698,7 @@ module CB_TF
           UI.messagebox("TF Rubies: Error saving Shop Drawing: #{sd_file}")
         end #batch
       else
-        sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)
+        sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)  
         if sd_file
           print("File name returned from save dialog: "+ sd_file + "\n")
           while sd_file.index("\\")
@@ -727,6 +727,7 @@ module CB_TF
       puts "putting it back"
       model.commit_operation
       model.save # This is still the temp file - just so it doesn't bug the user about it
+      model.close # Because the mac leaves this open.
       status = Sketchup.open_file(original_path, with_status: true)
       if status != Sketchup::Model::LOAD_STATUS_SUCCESS
         UI.messagebox("Error opening original model")
@@ -753,7 +754,7 @@ module CB_TF
     * Duplicate names will cause problems!
     * The order will be the same as in the timber list.
 
-    Shop drawings will be saved to: #{shop_drawings_path}
+    Shop drawings will be saved to the folder you are about to select.
     * Any existing shop drawings with the same name will be overwitten!
     
     This can take a while.
@@ -763,6 +764,12 @@ module CB_TF
     
     result = UI.messagebox(message, MB_YESNO)
     return unless result == IDYES
+
+    result = UI.select_directory(title: "Select Shop Drawing Folder", directory: shop_drawings_path)
+    return unless result
+    shop_drawings_path = result
+    Sketchup.write_default("TF", "shop_drawings_path", shop_drawings_path)
+
 
     model = Sketchup.active_model
     min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
@@ -793,7 +800,7 @@ module CB_TF
       count += 1
     end
     UI.messagebox("#{count} shop drawings created.")
-  end
+  end  # batch_make_shop_drawings 
 
   def CB_TF.is_2d?(dd)
     bounds = dd.bounds
