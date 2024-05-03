@@ -322,9 +322,17 @@ module CB_TF
   		end
   	end
 
-    model.save # yep
+    # save this stuff so we can restore the view after
+    view = model.active_view
+    cam = view.camera
+    save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
+    save_sky = model.rendering_options["DrawHorizon"]
+    save_background = model.rendering_options["BackgroundColor"]
+    save_back_edges = model.rendering_options["DrawBackEdges"]
+
+    model.start_operation("Prepare to make shop drawings", true)
+
     original_path = model.path
-    model.start_operation("gather mortises", true)
 
     sel = model.selection
 
@@ -363,7 +371,7 @@ module CB_TF
       drawing_name = original.name + ".skp"
     end
     project_name = model.title
-    
+   
     # make a copy of the original
     new_timber = model.entities.add_instance(original.definition, original.transformation)
     new_timber.make_unique  # don't mess up the original!
@@ -467,42 +475,12 @@ module CB_TF
     end
     # print ("joined.\n")
 
-    new_timber.definition.save_as("tf_rubies_temp_shop_dwg.skp")
-    new_transformation = new_timber.transformation.clone
-    model.commit_operation
-    Sketchup.undo
-
-    status = Sketchup.open_file("tf_rubies_temp_shop_dwg.skp", with_status: true)
-    if status != Sketchup::Model::LOAD_STATUS_SUCCESS
-      UI.messagebox("Error opening shop drawing file.  Status: #{status}")
-    end
-
-    model = Sketchup.active_model
-    model.start_operation("make shop drawings", true)
-    ents = []
-    model.entities.each do |e|
-      ents << e
-    end
-    group = model.entities.add_group(ents)
-
-    ## BUG = now need to transform this like the original CI was, so that the NSEW directions are correct
-
-    # make an array of instances to hold the 4 copies of the original plus joinery
-    shop_dwg = Array.new
-    shop_dwg[0] = group.to_component
-    shop_dwg[0].transform! new_transformation
-
-    # save camera for 3d view later
-    view = model.active_view
-    cam = view.camera
-    save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
-
     # create styles, pages (scenes) and layers (tags) for 2d shops and 3s shops
     pages = model.pages
-    tf_shops_page = pages.add "2D Shops"
-    tf_shops_page.transition_time = 0
-    tf_3d_shops_page = pages.add "3D Shops"
+    tf_3d_shops_page = pages.add("3D Shops", PAGE_USE_ALL, 0)
     tf_3d_shops_page.transition_time = 0
+    tf_shops_page = pages.add("2D Shops", PAGE_USE_ALL, 0)
+    tf_shops_page.transition_time = 0
     
     layers = model.layers
     tf_shops_layer = layers.add "tf_shops_layer"
@@ -525,28 +503,32 @@ module CB_TF
     styles.selected_style = tf_shops_style
 
     # create the 3D view timber
-    shop_3d_timber = model.entities.add_instance(shop_dwg[0].definition, new_transformation)
+    shop_3d_timber = model.entities.add_instance(new_timber.definition, new_timber.transformation)
     shop_3d_timber.make_unique
     shop_3d_timber.name = "shop_3d_timber"
     shop_3d_timber.layer = tf_3d_shops_layer
     shop_3d_timber.set_attribute(JAD, "project_name", project_name) # stash these here so we can find them in the shop drawings file
    
     shop_3d_timber.set_attribute(JAD, "qty", shop_qty.to_s)
-    shop_3d_timber = remove_stray_faces(shop_3d_timber)
+    remove_stray_faces(shop_3d_timber)
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i
-    lay_down_on_red(shop_dwg[0], s==1)
+    lay_down_on_red(new_timber, s==1)
     
     # offset it away from the rest of the model, and place it on the ground plane
-    bb = shop_dwg[0].bounds
+    bb = new_timber.bounds
     tv = Geom::Vector3d.new(0, MODEL_OFFSET, (-1)*bb.corner(0).z)
     tt = Geom::Transformation.translation(tv)
-    shop_dwg[0].transform!(tt)
-    shop_dwg[0].layer = tf_shops_layer
+    new_timber.transform!(tt)
+    new_timber.layer = tf_shops_layer
 
     # Now make the other sides
     rv = Geom::Vector3d.new(0,0,0)    #rotation vector
+ 
+    # make an array of instances to hold the 4 copies of the original plus joinery
+    shop_dwg = Array.new
+    shop_dwg[0] = new_timber
 
     for i in 1..3
       ### Dupe It
@@ -554,7 +536,7 @@ module CB_TF
       shop_dwg[i].layer = tf_shops_layer
 
       # apply same transform to new comp.
-      shop_dwg[i].transformation = shop_dwg[i-1].transformation;
+      shop_dwg[i].transformation = shop_dwg[i-1].transformation
 
       ### Offset it from the previous one
       tv = Geom::Vector3d.new(0, 0, side_spacing)
@@ -619,10 +601,13 @@ module CB_TF
         shop_definition.entities.add_text(dir_label, ctr)
       end
     end # for each shop drawing
-
+    
     for i in 0..3
-      shop_dwg[i] = remove_stray_faces(shop_dwg[i])
+      remove_stray_faces(shop_dwg[i])
     end
+
+    model.commit_operation  # because undoing the stray faces stuff causes SU to crash 
+    model.start_operation("Make Shop Drawings", true)
 
     puts("adjusting camera settings")
     camera = Sketchup::Camera.new
@@ -659,6 +644,7 @@ module CB_TF
     # but that's why I'm not using bulk delete (erase_entities)
     victims.each {|victim| victim.erase! if victim.valid?}  
 
+
     result = model.definitions.purge_unused
     if not result
       print("purge failed\n")
@@ -668,8 +654,6 @@ module CB_TF
     view.zoom(sel)
     sel.clear
     mark_reference_faces(shop_dwg, tf_shops_layer)
-    #model.add_note(drawing_header, 0.25, 0.02)
-    #model.add_note(drawing_title, 0.75, 0.02)
 
     styles.update_selected_style
     tf_shops_page.use_style = tf_shops_style
@@ -710,7 +694,7 @@ module CB_TF
       if batch
         sd_file = File.join(shop_drawings_path, drawing_name)
         puts "batch mode, sd_file: #{sd_file}"
-        save_status = model.save(sd_file)
+        save_status = model.save_copy(sd_file)
         unless save_status
           UI.messagebox("TF Rubies: Error saving Shop Drawing: #{sd_file}")
         end #batch
@@ -722,11 +706,7 @@ module CB_TF
             sd_file["\\"]="/"
           end
           print("saving shop drawings as:"+sd_file + "\n")
-          if su_ver >= 14
-            save_status = model.save_copy(sd_file)
-          else
-            save_status = model.save(sd_file)
-          end
+          save_status = model.save_copy(sd_file)
           unless save_status
             UI.messagebox("TF Rubies: Error saving Shop Drawings!")
           else
@@ -743,16 +723,19 @@ module CB_TF
       # now put everyting back the way we found it!
       puts "putting it back"
       model.commit_operation
-      model.save # This is still the temp file - just so it doesn't bug the user about saving it
-      if Sketchup.platform == :platform_osx
-        model.close # Because the mac leaves this open.
-      end
-      status = Sketchup.open_file(original_path, with_status: true)
-      if status != Sketchup::Model::LOAD_STATUS_SUCCESS
-        UI.messagebox("Error opening original model")
-        return
-      end
-      model = Sketchup.active_model
+      Sketchup.undo
+      puts "undo complete"
+      pages.erase(tf_3d_shops_page)
+      pages.erase(tf_shops_page)
+      layers.remove(tf_3d_shops_layer, true)
+      layers.remove(tf_shops_layer, true)
+      view = model.active_view
+      view.camera = save_cam
+      model.rendering_options["DrawHorizon"] = save_sky
+      model.rendering_options["BackgroundColor"] = save_background
+      model.rendering_options["DrawBackEdges"] = save_back_edges
+      model.definitions.purge_unused      
+      puts "view restored"
     end
   end  # make shop drawings
 
@@ -783,6 +766,7 @@ module CB_TF
     result = UI.messagebox(message, MB_YESNO)
     return unless result == IDYES
 
+    Sketchup.status_text = "Select Shop Drawing Folder"
     shop_drawings_path = UI.select_directory(title: "Select Shop Drawing Folder", directory: shop_drawings_path)
     return unless shop_drawings_path
     Sketchup.write_default("TF", "shop_drawings_path", shop_drawings_path)
@@ -857,7 +841,6 @@ module CB_TF
       # puts "Remove stray faces erasing #{victims.count} edges"
       shop_definition.entities.erase_entities(victims)
     end
-    return shop_instance
   end
 
   # debug method
