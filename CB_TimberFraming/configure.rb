@@ -9,7 +9,7 @@ module CB_TF
         :scrollable => true,
         :resizable => false,
         :width => 700,
-        :height => 800,
+        :height => 750,
         :left => 200,
         :top => 200,
         :style => UI::HtmlDialog::STYLE_DIALOG

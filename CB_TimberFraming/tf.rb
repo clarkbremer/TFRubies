@@ -771,7 +771,7 @@ module CB_TF
     return unless shop_drawings_path
     Sketchup.write_default("TF", "shop_drawings_path", shop_drawings_path)
 
-
+    Sketchup.status_text = "Selecting Timbers for Batch Shop Drawings"
     model = Sketchup.active_model
     min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
     s = Sketchup.read_default("TF", "metric", 0).to_i

@@ -7,13 +7,10 @@
 I'd happily accept help from anyone who wants to contribute some code to this project.  Below is a list of features I'd like to add, but feel free to come up with your own.
 
 ## To Do: ##
-* Write our own version of "cut face" so we can cut multiple faces.  
-	- Need to mark the "cutting face" on joint components,
 * Bug: if timber name has illegal characters (like forward slash), save shop drawings fails.  
 	- Need to scrub the name first.
 * Hide cosmetic pegs before shop drawings and timber lists
 * For finding extreme faces for ref faces, break ties with face size (as we already do with direction labels)
-* Feature to make ALL shop drawings all at once.
 
 ## Revision History ##
  Version 3 Spring 2024

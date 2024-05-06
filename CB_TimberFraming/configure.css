@@ -2,11 +2,15 @@ h1 {
   font-family: arial, sans-serif;
   text-align: center;
 }
-p.center {
+p.buttons {
+  margin-top: 30px;
   text-align: center;
 } 
-button.pad {
-  margin-left: 16px;
+button.large_button {
+  height: 40px;
+  width: 100px;
+  margin-left: 8px;
+  margin-right: 8px;
 }
 div.pad_left {
   margin-left: 16px;
@@ -16,12 +20,17 @@ div.settings {
   margin-left: 16px;
   display:grid;
   grid-template-columns: 1fr 1fr;
-  grid-gap:5px;
+  grid-gap: 5px;
+  margin-top: 20px;
 }
 div.viewports {
   font-family: arial, sans-serif;
 }
 .center {
+  margin-left: auto;
+  margin-right: auto;
+}
+.buttonbar {
   margin-left: auto;
   margin-right: auto;
 }

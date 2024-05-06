@@ -25,7 +25,7 @@
       <label>Show NSEWTB Labels on Shops?</label>
       <div>
         <input id="dir_labelsY"; type="radio" name="dir_labels"/>
-        <label for="dir_labelsY">Yes</label><br>
+        <label for="dir_labelsY">Yes</label>
         <input id="dir_labelsN"; type="radio" name="dir_labels"/>
         <label for="dir_labelsN">No</label>
       </div>
@@ -33,7 +33,7 @@
       <label>Round Up Dimensions on Timber list?</label>
       <div>
         <input id="roundupY"; type="radio" name="roundup"/>
-        <label for="roundupY">Yes</label><br>
+        <label for="roundupY">Yes</label>
         <input id="roundupN"; type="radio" name="roundup"/>
         <label for="roundupN">No</label>
       </div>
@@ -41,7 +41,7 @@
       <label>Timber List Tally by Tag?</label>
       <div>
         <input id="list_by_tagY"; type="radio" name="list_by_tag"/>
-        <label for="list_by_tagY">Yes</label><br>
+        <label for="list_by_tagY">Yes</label>
         <input id="list_by_tagN"; type="radio" name="list_by_tag"/>
         <label for="list_by_tagN">No</label>
       </div>
@@ -57,7 +57,7 @@
       <label>Timber List File Format:</label>
       <div>
         <input id="lff_csv"; type="radio" name="lff"/>
-        <label for="lff_csv">CSV</label><br>
+        <label for="lff_csv">CSV</label>
         <input id="lff_txt"; type="radio" name="lff"/>
         <label for="lff_txt">Text</label>
         <input id="lff_xls"; type="radio" name="lff"/>
@@ -74,18 +74,17 @@
                   
       <label>Minimum Extra Timber Length:</label>
       <input id='min_extra_timber_length'; type="number" />               
-
-      <label>Show Size and Qty on Shops?</label>
-      <div>
-        <input id="qtyY"; type="radio" onchange="show_qty_config();" name="qty"/>
-        <label for="qtyY">Yes</label><br>
-        <input id="qtyN"; type="radio" onchange="hide_qty_config();"name="qty"/>
-        <label for="qtyN">No</label>
-      </div>
     </div>
 
     <div id="size_qty_div" class="settings">
-      <label>Size and Qty X Position:</label>
+      <label>Show Size and Qty on Shops?</label>
+      <div>
+        <input id="qtyY"; type="radio" onchange="show_qty_config();" name="qty"/>
+        <label for="qtyY">Yes</label>
+        <input id="qtyN"; type="radio" onchange="hide_qty_config();"name="qty"/>
+        <label for="qtyN">No</label>
+      </div>
+    <label>Size and Qty X Position:</label>
       <input id='sq_x' type="number" step="0.125" />               
 
       <label>Size and Qty Y Position:</label>
@@ -96,11 +95,11 @@
 
       <label>Size and Qty Font Size:</label>
       <input id='sq_font_size' type="number" step="2" />               
-
+      
       <label>Size and Qty Bold?</label>
       <div>
         <input id="sq_boldY"; type="radio" name="sq_bold"/>
-        <label for="sq_boldY">Yes</label><br>
+        <label for="sq_boldY">Yes</label>
         <input id="sq_boldN"; type="radio" name="sq_bold"/>
         <label for="sq_boldN">No</label>
       </div>      
@@ -136,6 +135,6 @@
       </table>
     </div>
 
-    <p class="center"><button onclick='save_data()'>Save</button><button class="pad"; onclick='sketchup.tf_cancel()'>Cancel</button></p>
+    <p class="buttons"><button class="large_button" onclick='save_data()'>Save</button><button class="large_button"; onclick='sketchup.tf_cancel()'>Cancel</button></p>
   </body>
 </html>
