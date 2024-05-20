@@ -188,7 +188,6 @@ module CB_TF
           rescue
           end
         else
-          UI.messagebox("Timber List NOT saved!")
           return
         end
       end
@@ -313,7 +312,7 @@ module CB_TF
         nl.each do |ct|
           if (ct.count > 1)
             print("warning: duplicate named timber:"+ct.name+"\n")
-            UI.messagebox("TF Rubies: warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
+            UI.messagebox("Warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
           end
           ct.count.times do
             worksheet.cells(row,1).value = ct.name  #A
@@ -615,7 +614,7 @@ module CB_TF
         nl.each do |ct|
           if (ct.count > 1)
             print("warning: duplicate named timber:"+ct.name+"\n")
-            UI.messagebox("TF Rubies: warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
+            UI.messagebox("Warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
           end
           ct.count.times do
             if metric
@@ -702,7 +701,7 @@ module CB_TF
         nl.each do |ct|
           if (ct.count > 1)
             print("warning: duplicate named timber:"+ct.name+"\n")
-            UI.messagebox("TF Rubies: warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
+            UI.messagebox("Warning: Duplicate Named Timber: " + ct.name + "\nDimensions will not be correct in list.")
           end
           ct.count.times do
             if metric
@@ -794,8 +793,8 @@ module CB_TF
       print("Timber list created.\n")
       begin
         rescue
-          print("TF Rubies: Error creating timber list: " + $!.message + "\n")
-          UI.messagebox("TF Rubies: Error creating timber list: " + $!.message)
+          print("Error creating timber list: " + $!.message + "\n")
+          UI.messagebox("Error creating timber list: " + $!.message)
         ensure
       end
       model.definitions.purge_unused

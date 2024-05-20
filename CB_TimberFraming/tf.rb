@@ -306,21 +306,20 @@ module CB_TF
     side_spacing = Sketchup.read_default("TF", "side_spacing", "30").to_i
 
     if not original.instance_of? Sketchup::ComponentInstance
-      UI.messagebox "TF Rubies: Must have one and only one timber selected"
+      UI.messagebox "Timber Framing: Must have one and only one timber selected"
       return
     end
     if not original.parent == Sketchup.active_model
-      UI.messagebox "TF Rubies: Timber must not be part of a component or group"
+      UI.messagebox "Timber Framing: Timber must not be part of a component or group"
       return
     end
 
     model = Sketchup.active_model
-    if su_ver >= 14
-  		if model.path == ''
-  		  UI.messagebox("Current model must be saved before making shop drawings.")
-  		  return
-  		end
-  	end
+    if model.path == ''
+      UI.messagebox("Current model must be saved before making shop drawings.")
+      return
+		end
+    model.start_operation("Make shop drawings", true)
 
     # save this stuff so we can restore the view after
     view = model.active_view
@@ -329,8 +328,6 @@ module CB_TF
     save_sky = model.rendering_options["DrawHorizon"]
     save_background = model.rendering_options["BackgroundColor"]
     save_back_edges = model.rendering_options["DrawBackEdges"]
-
-    model.start_operation("Prepare to make shop drawings", true)
 
     original_path = model.path
 
@@ -498,7 +495,7 @@ module CB_TF
       status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
       tf_shops_style = styles["[Default Style]"]
       tf_shops_style.name = "tf_shops_style"
-      tf_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
+      tf_shops_style.description = "Auto-added by Timber Framing Extensions for Shop Drawings"
     end
     styles.selected_style = tf_shops_style
 
@@ -603,11 +600,13 @@ module CB_TF
     end # for each shop drawing
     
     for i in 0..3
-      remove_stray_faces(shop_dwg[i])
+      remove_stray_faces(shop_dwg[i])  # this involves exploding components
     end
 
-    model.commit_operation  # because undoing the stray faces stuff causes SU to crash 
-    model.start_operation("Make Shop Drawings", true)
+    # Undoing an explosion causes SU to crash.  See:
+    # https://forums.sketchup.com/t/after-exploding-a-group-at-the-root-context-undo-causes-a-bugsplat/268302
+    model.commit_operation 
+    model.start_operation("Make Shop Drawings (will be undone)", true) # I only want to Undo up to this point, so I can't set the 4th argument to true
 
     puts("adjusting camera settings")
     camera = Sketchup::Camera.new
@@ -669,7 +668,7 @@ module CB_TF
       status = styles.add_style(Sketchup.find_support_file("00Default Style.style", "Styles/Default Styles"), false)
       tf_3d_shops_style = styles["[Default Style]"]
       tf_3d_shops_style.name = "tf_3d_shops_style"
-      tf_3d_shops_style.description = "Auto-added by TF Extensions for Shop Drawings"
+      tf_3d_shops_style.description = "Auto-added by Timber Framing Extensions for Shop Drawings"
     end
     styles.selected_style = tf_3d_shops_style
 
@@ -696,7 +695,7 @@ module CB_TF
         puts "batch mode, sd_file: #{sd_file}"
         save_status = model.save_copy(sd_file)
         unless save_status
-          UI.messagebox("TF Rubies: Error saving Shop Drawing: #{sd_file}")
+          UI.messagebox("Timber Framing: Error saving Shop Drawing: #{sd_file}")
         end #batch
       else
         sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)  
@@ -708,23 +707,22 @@ module CB_TF
           print("saving shop drawings as:"+sd_file + "\n")
           save_status = model.save_copy(sd_file)
           unless save_status
-            UI.messagebox("TF Rubies: Error saving Shop Drawings!")
+            UI.messagebox("Timber Framing: Error saving Shop Drawings.")
           else
             Sketchup.write_default("TF", "shop_drawings_path", File.dirname(sd_file))
           end
-        else
-          UI.messagebox("Shop Drawings NOT saved!")
         end
       end # not batch
     rescue
-      print("TF Rubies: Error creating shop drawings: " + $!.message + "\n")
-      UI.messagebox("TF Rubies: Error creating shop drawings: " + $!.message)
+      print("Timber Framing: Error creating shop drawings: " + $!.message + "\n")
+      UI.messagebox("Timber Framing: Error creating shop drawings: " + $!.message)
     ensure
       # now put everyting back the way we found it!
       puts "putting it back"
       model.commit_operation
       Sketchup.undo
       puts "undo complete"
+      model.start_operation("Cleanup after Make Shop Drawings", true, false, true)
       pages.erase(tf_3d_shops_page)
       pages.erase(tf_shops_page)
       layers.remove(tf_3d_shops_layer, true)
@@ -735,6 +733,8 @@ module CB_TF
       model.rendering_options["BackgroundColor"] = save_background
       model.rendering_options["DrawBackEdges"] = save_back_edges
       model.definitions.purge_unused      
+      model.commit_operation
+      Sketchup.undo
       puts "view restored"
     end
   end  # make shop drawings
@@ -1002,14 +1002,14 @@ module CB_TF
     vv = CB_TF::CB_TimberFraming_VERSION
     dd = CB_TF::CB_TimberFraming_DATE
     UI.messagebox(%Q[
-      TF Extensions Version #{vv} - #{dd}
+      Timber Framing Extensions Version #{vv} - #{dd}
       Copyright (c) Clark Bremer
       clark@tenon.technology
   ])
   end
 
   def CB_TF.tf_contribute
-    UI.messagebox("To show your appreciation, and\nsupport further development of the TF Extensions,\nfeel free to leave a contribution in my\npaypal account: clarkbremer@gmail.com\n")
+    UI.messagebox("To show your appreciation, and\nsupport further development of the Timber Framing Extensions,\nfeel free to leave a contribution in my\npaypal account: clarkbremer@gmail.com\n")
   end
 
   ##
@@ -1076,37 +1076,40 @@ unless file_loaded?("tf.rb")
     if menu == nil
       UI.messagebox("Error settting context menu handler")
     end
-    menu.add_separator
     if CB_TF.sel_is_tenon
-      menu.add_item("TF ID: Joint") {UI.beep}
+      menu.add_separator
+      menu.add_item("Timber Framing ID: Joint") {UI.beep}
     elsif CB_TF.sel_is_peg
-      menu.add_item("TF ID: Peg") {UI.beep}
+      menu.add_separator
+      menu.add_item("Timber Framing ID: Peg") {UI.beep}
     end
 
     if (sel = CB_TF.selected_component)
-      tenon_menu_item = menu.add_item("TF Create Joint") {CB_TF.create_joint}
+      menu.add_separator
+      tenon_menu_item = menu.add_item("Create Joint") {CB_TF.create_joint}
       menu.set_validation_proc(tenon_menu_item) {CB_TF.tenon_valid_proc(sel)}
-      shop_dwg_menu_item = menu.add_item("TF Make Shop Drawings") {CB_TF.make_shop_drawings(sel)}
+      shop_dwg_menu_item = menu.add_item("Make Shop Drawings") {CB_TF.make_shop_drawings(sel)}
       menu.set_validation_proc(shop_dwg_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
-      # auto_dimensions_menu_item = menu.add_item("TF Add Dimensions") {CB_TF.auto_dimensions(sel)} ## Experimental
+      # auto_dimensions_menu_item = menu.add_item("Timber Framing Add Dimensions") {CB_TF.auto_dimensions(sel)} ## Experimental
       # menu.set_validation_proc(auto_dimensions_menu_item) {CB_TF.auto_dimensions_valid_proc(sel)}
       dod = 0.0
       if sel.parent == Sketchup.active_model
         dod = sel.definition.get_attribute(CB_TF::JAD, "DoD", 0.0)
       end
-      set_dod_menu_item = menu.add_item("TF Set DoD (currently " + dod.to_s + ")") {CB_TF.set_dod(sel)}
+      set_dod_menu_item = menu.add_item("Set DoD (currently " + dod.to_s + ")") {CB_TF.set_dod(sel)}
       menu.set_validation_proc(set_dod_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}  # same rules as shop dwg
     end
 
     if CB_TF.selected_face
-      peg_menu_item = menu.add_item("TF Create Peg") {CB_TF.make_peg}
+      menu.add_separator
+      peg_menu_item = menu.add_item("Create Peg") {CB_TF.make_peg}
       menu.set_validation_proc(peg_menu_item) {CB_TF.peg_valid_proc}
     end
   end # context (right click) menu
 
-  tf_menu = UI.menu("Plugins").add_submenu("TF Rubies")
+  tf_menu = UI.menu("Extensions").add_submenu("Timber Framing")
   if tf_menu == nil
-    UI.messagebox("TF Rubies: Error adding plugins menu")
+    UI.messagebox("Timber Framing: Error adding plugins menu")
   end
   tf_menu.add_item("Timber List") {CB_TF.make_timber_list}
   tf_menu.add_item("Count Joints and Timbers") {CB_TF.count_joints}
@@ -1116,9 +1119,9 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Send Shops to Layout") {CB_TF.send_shops_to_layout}
   tf_menu.add_item("Send Shops to Layout (Batch)") {CB_TF.batch_shops_to_layout}
   tf_menu.add_item("Make Shop Drawings (Batch)") {CB_TF.batch_make_shop_drawings}
-  peg_tool_item = tf_menu.add_item("TF Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
+  peg_tool_item = tf_menu.add_item("Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
   tf_menu.set_validation_proc(peg_tool_item) {CB_TF.peg_tool_valid_proc}
-  stretch_tool_item = tf_menu.add_item("TF Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
+  stretch_tool_item = tf_menu.add_item("Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
   tf_menu.set_validation_proc(stretch_tool_item) {CB_TF.stretch_tool_valid_proc}
   tf_menu.add_item("Assign DoD Tool"){Sketchup.active_model.select_tool(CB_TF::DoDTool.new)}
   tf_menu.add_item("Configure") {CB_TF.configure}

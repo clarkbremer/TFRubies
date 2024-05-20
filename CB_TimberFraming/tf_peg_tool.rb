@@ -3,7 +3,7 @@
 ##  
 ##  clark@diytf.com
 ##
-##	TF Peg Tool (v 1.0)   5/8/2013
+##	Timber Framing Peg Tool (v 1.0)   5/8/2013
 ##	Borrowed heavily from linetool example
 ##	User must have a joint component selected to use the tool.
 ##
@@ -445,7 +445,3 @@ module CB_TF
   end # class TFPegTool
 
 end # module CB_TF
-
-
-
-

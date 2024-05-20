@@ -3,7 +3,7 @@
 ##  DIY Timber Framing
 ##  clark@diytf.com
 ##
-##	TF StretchTool (v 1.1)   5/5/2013
+##	Timber Framing StretchTool (v 1.1)   5/5/2013
 ##
 ##	This tool will stretch a component the "long" way.
 ##	The difference between this and the scale tool is that this tool does not distort 
@@ -232,7 +232,7 @@ end
                 Sketchup::set_status_text "Select Stretch Destination", SB_PROMPT
                 Sketchup.vcb_label = "Stretch Distance"
                 @state = 1
-    			Sketchup.active_model.start_operation("TF Stretch")			
+    			Sketchup.active_model.start_operation("Timber Framing Stretch")			
 
            end
     	   
