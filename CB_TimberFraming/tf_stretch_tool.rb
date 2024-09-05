@@ -63,7 +63,7 @@ module CB_TF
         # This sets the label for the VCB
         Sketchup.vcb_label = ""
         
-        self.reset(nil)
+        self.reset(nil, false)
 end
 
     # deactivate is called when the tool is deactivated because
@@ -233,7 +233,7 @@ end
                 Sketchup.vcb_label = "Stretch Distance"
                 @state = 1
     			Sketchup.active_model.start_operation("Timber Framing Stretch")			
-
+                # puts "TF Stretch start_operation"
            end
     	   
         else  # second mouse click - we're done, just clean up
@@ -297,7 +297,7 @@ end
     	
     #	puts "moving via VCB: " << distance.to_s
     	
-    	# put everything bakc the way we started
+    	# put everything back the way we started
     	if @state == 1 
     		self.reset(view)
     	end	
@@ -344,9 +344,12 @@ end
 
     # onCancel is called when the user hits the escape key
     def onCancel(flag, view)
-        self.reset(view)
-    	Sketchup.undo
-    end
+        # puts "tf stretch cancelled, @state = #{@state}"
+        if @state == 1
+          self.reset(view)
+          Sketchup.undo  
+        end
+    end 
 
     # The following methods are not directly called from SketchUp.  They are
     # internal methods that are used to support the other methods in this class.
@@ -360,7 +363,7 @@ end
     end		
 
     # Reset the tool back to its initial state
-    def reset(view)
+    def reset(view, commit = true)
         # This variable keeps track of which point we are currently getting
         @state = 0
         
@@ -378,7 +381,10 @@ end
         
         @drawn = false
         @dragging = false
-    	Sketchup.active_model.commit_operation
+        if commit
+            Sketchup.active_model.commit_operation
+            # puts "TF Stretch commit_operation"
+        end
     	if @initial_comp_selected == false 
     		Sketchup.active_model.selection.clear()
     		@ci = nil

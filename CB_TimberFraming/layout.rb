@@ -12,7 +12,7 @@ module CB_TF
         project_name = get_project_name(model)
 
         message = <<~MSG
-        **** CAUTION *****
+        **** CAUTION - EXPERIMENTAL *****
 
         All *.skp files in the folder
         #{directory}
@@ -29,6 +29,12 @@ module CB_TF
 
         doc = open_or_create_layout_doc(project_name, File.dirname(first_file_name))
         return unless doc
+
+        if SKETCHUP_CONSOLE.visible?
+            leave_console_open = true
+        else
+            SKETCHUP_CONSOLE.show
+        end
 
         count = 0
 
@@ -58,6 +64,8 @@ module CB_TF
                 break
             end
         end
+
+        SKETCHUP_CONSOLE.hide unless leave_console_open
         puts "#{count} pages added to #{project_name}"
         UI.messagebox "#{count} pages added to Layout Doc #{project_name}"
     end

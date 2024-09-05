@@ -143,44 +143,46 @@ module CB_TF
   # This method has nothing to do with the create_pegs or project_pegs method used in shop drawings.
   def CB_TF.show_pegs
     model = Sketchup.active_model
-    model.start_operation("Add Pegs", true)
-      peg_layer = Sketchup.active_model.layers.add COSMETIC_PEG_LAYER_NAME
-      peg_count = 0
-      o = Geom::Point3d.new(0,0,0)
-      v = Geom::Vector3d.new(0,0,1)
-      pd = model.definitions.add("pegette")
-  #    pd.layer = peg_layer
-      ents = pd.entities.add_circle(o, v, 0.5, 16)
-      ents.each {|ent| ent.layer = "Layer0"}
-      if f = pd.entities.add_face(ents) then
-        f.layer = "Layer0"
-        f.pushpull(-1)
-      end
-      model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
-        next if timber.hidden?
-        next unless timber.layer.visible?
-        timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
-          if tenon.definition.get_attribute( JAD, "tenon", false) then
-            tenon.definition.entities.grep(Sketchup::Face) do |peg_face|
-              next unless peg_face.get_attribute( JAD, "peg", false)
-              peg_ctr = get_peg_center(tenon, timber, peg_face)
-              #print("Peg: " + peg_ctr.to_s + "\n")
-              if peg_ctr then
-                peg_count +=1
-                peg_ctr.transform!(timber.transformation)  # peg is in timber coordinates.  We want global.
-                pv = peg_face.normal            # peg_face is in tenon coordinates.  We want global
-                pv.transform!(tenon.transformation)
-                pv.transform!(timber.transformation)
-                pt = Geom::Transformation.new(peg_ctr, pv)
-                pi = model.active_entities.add_instance(pd, pt)
+    puts "show pegs start_operation"
+    model.start_operation("Show Pegs", true)
+    peg_layer = Sketchup.active_model.layers.add COSMETIC_PEG_LAYER_NAME
+    peg_count = 0
+    o = Geom::Point3d.new(0,0,0)
+    v = Geom::Vector3d.new(0,0,1)
+    pd = model.definitions.add("pegette")
+#    pd.layer = peg_layer
+    ents = pd.entities.add_circle(o, v, 0.5, 16)
+    ents.each {|ent| ent.layer = "Layer0"}
+    if f = pd.entities.add_face(ents) then
+      f.layer = "Layer0"
+      f.pushpull(-1)
+    end
+    model.active_entities.grep(Sketchup::ComponentInstance) do |timber|
+      next if timber.hidden?
+      next unless timber.layer.visible?
+      timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
+        if tenon.definition.get_attribute( JAD, "tenon", false) then
+          tenon.definition.entities.grep(Sketchup::Face) do |peg_face|
+            next unless peg_face.get_attribute( JAD, "peg", false)
+            peg_ctr = get_peg_center(tenon, timber, peg_face)
+            #print("Peg: " + peg_ctr.to_s + "\n")
+            if peg_ctr then
+              peg_count +=1
+              peg_ctr.transform!(timber.transformation)  # peg is in timber coordinates.  We want global.
+              pv = peg_face.normal            # peg_face is in tenon coordinates.  We want global
+              pv.transform!(tenon.transformation)
+              pv.transform!(timber.transformation)
+              pt = Geom::Transformation.new(peg_ctr, pv)
+              pi = model.active_entities.add_instance(pd, pt)
 
-                pi.layer = peg_layer
-              end
+              pi.layer = peg_layer
             end
           end
         end
       end
-      print(peg_count.to_s + " Pegs drawn.\n")
+    end
+    print(peg_count.to_s + " Pegs drawn.\n")
+    puts "Show Pegs commit_operation"
     model.commit_operation
   end
 
@@ -422,7 +424,7 @@ module CB_TF
       next if timber == original  # not this
       next if timber == new_timber  # not these
       # print("Found potential timber:", timber, "\n")
-      # every comp inst in the top level of the TIMBER is a potential tenon
+      # every comp inst in the top level of the TIMBER is a potential tenon (joint)
       timber.definition.entities.grep(Sketchup::ComponentInstance) do |tenon|
         next unless  has_attribute?(tenon.definition, "tenon")  # only those marked as tenons
         # print "found a potential tenon:", tenon, "\n"
@@ -743,7 +745,7 @@ module CB_TF
     shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
 
     message = <<~MSG
-    **** CAUTION *****
+    **** CAUTION - EXPERIMENTAL *****
 
     Shop drawings will be created for ALL visible components in this 
     model.  Make sure only timbers are visible.  The naming rules are 
@@ -785,6 +787,12 @@ module CB_TF
       else roundup = false
     end
 
+    if SKETCHUP_CONSOLE.visible?
+      leave_console_open = true
+    else
+      SKETCHUP_CONSOLE.show
+    end
+
     cl, scantlings, timbers = collect_timber_lists(min_extra_timber_length, metric, roundup)
 
     count = 0
@@ -800,6 +808,7 @@ module CB_TF
       make_shop_drawings(t, true)
       count += 1
     end
+    SKETCHUP_CONSOLE.hide unless leave_console_open
     UI.messagebox("#{count} shop drawings created.")
   end  # batch_make_shop_drawings 
 
@@ -826,6 +835,8 @@ module CB_TF
     end
     # puts "exploding #{victims.count} joints"
     victims.each do |joint|
+      # puts "reglueing joint: #{joint.definition.name}"
+      reglue(joint)
       # puts "exploding joint: #{joint.definition.name}"
       joint.explode
     end  
