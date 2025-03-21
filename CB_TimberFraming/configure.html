@@ -76,7 +76,7 @@
       <input id='min_extra_timber_length'; type="number" />               
     </div>
 
-    <div id="size_qty_div" class="settings">
+    <div class="settings">
       <label>Show Size and Qty on Shops?</label>
       <div>
         <input id="qtyY"; type="radio" onchange="show_qty_config();" name="qty"/>
@@ -84,7 +84,9 @@
         <input id="qtyN"; type="radio" onchange="hide_qty_config();"name="qty"/>
         <label for="qtyN">No</label>
       </div>
-    <label>Size and Qty X Position:</label>
+    </div>
+    <div id="size_qty_div" class="settings">
+      <label>Size and Qty X Position:</label>
       <input id='sq_x' type="number" step="0.125" />               
 
       <label>Size and Qty Y Position:</label>
