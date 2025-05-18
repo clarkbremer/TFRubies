@@ -510,6 +510,14 @@ module CB_TF
    
     shop_3d_timber.set_attribute(JAD, "qty", shop_qty.to_s)
     remove_stray_faces(shop_3d_timber)
+    t3do = Sketchup.read_default("TF", "t3do", "V") 
+    if t3do == "V"
+      # puts "Vertical - calling stand_up_on_blue"
+      stand_up_on_blue(shop_3d_timber)
+    elsif t3do == "H"
+      # puts "Horizontal - calling lay_down_on_red"
+      lay_down_on_red(shop_3d_timber)
+    end
 
     # add Direction labels if so configured
     s = Sketchup.read_default("TF", "dir_labels", 1).to_i

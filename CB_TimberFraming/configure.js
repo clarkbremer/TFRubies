@@ -113,6 +113,17 @@ document.onreadystatechange = function () {
 
     ci = document.getElementById('vp3dh');
     ci.value = data.vp3dh;
+
+    if (data.t3do == "H"){
+      ci = document.getElementById('t3d_horizontal');
+      ci.checked = true;
+    } else if (data.t3do == "V") {
+      ci = document.getElementById('t3d_vertical');
+      ci.checked = true;
+    } else {
+      ci = document.getElementById('t3d_none');
+      ci.checked = true;
+    }
   }
 }
 
@@ -206,6 +217,18 @@ function save_data() {
   ci = document.getElementById('vp3dh');
   data.vp3dh = ci.value;
 
+  ci = document.getElementById('t3d_vertical');
+  if (ci.checked){
+    data.t3do = "V";
+  };
+  ci = document.getElementById('t3d_horizontal');
+  if (ci.checked){
+    data.t3do = "H";
+  };
+  ci = document.getElementById('t3d_none');
+  if (ci.checked){
+    data.t3do = "N";
+  };
 
   sketchup.tf_save_config(data);
 }

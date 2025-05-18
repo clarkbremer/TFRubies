@@ -42,6 +42,7 @@ module CB_TF
         vp3dy: Sketchup.read_default("TF", "vp3dy", 0.375),
         vp3dw: Sketchup.read_default("TF", "vp3dw", 2.0),
         vp3dh: Sketchup.read_default("TF", "vp3dh", 10.0),
+        t3do: Sketchup.read_default("TF", "t3do", "V"),
       }.to_json,
       javascript: File.read(File.join(path, "configure.js")),
       stylesheet: File.read(File.join(path, "configure.css"))
@@ -76,6 +77,7 @@ module CB_TF
       Sketchup.write_default("TF", "vp3dy", data["vp3dy"])
       Sketchup.write_default("TF", "vp3dw", data["vp3dw"])
       Sketchup.write_default("TF", "vp3dh", data["vp3dh"])
+      Sketchup.write_default("TF", "t3do", data["t3do"])
     }
     dialog.add_action_callback("tf_cancel") { |action_context|
       puts "User canceled"

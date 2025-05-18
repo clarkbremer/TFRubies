@@ -412,9 +412,9 @@ module CB_TF
         worksheet = workbook.Worksheets.add(after: worksheet) #create page 2
         worksheet.name = "Tally"
         worksheet.columns("a").columnwidth = 10   # blank
-        worksheet.columns("b").columnwidth = 5    # W
-        worksheet.columns("c").columnwidth = 5    # D
-        worksheet.columns("d").columnwidth = 5    # Qty
+        worksheet.columns("b").columnwidth = 5    # Qty
+        worksheet.columns("c").columnwidth = 5    # W
+        worksheet.columns("d").columnwidth = 5    # D
         worksheet.columns("e").columnwidth = 7    # L (ft)
         if metric
           worksheet.columns("e").NumberFormat = "0.0"
@@ -454,9 +454,9 @@ module CB_TF
         worksheet.cells(row,12).value = "ORDERED"
         worksheet.cells(row,12).font.size = 16
         row+=1
-        worksheet.cells(row,2).value = "W"
-        worksheet.cells(row,3).value = "D"
-        worksheet.cells(row,4).value = "Qty"
+        worksheet.cells(row,2).value = "Qty"
+        worksheet.cells(row,3).value = "W"
+        worksheet.cells(row,4).value = "D"
         if metric
           worksheet.cells(row,5).value = "L(m)"
           worksheet.cells(row,7).value = "V(m3)"
@@ -466,9 +466,9 @@ module CB_TF
         end
         worksheet.cells(row,9).value = "Suggested"
         worksheet.cells(row,10).value = "Actual"
-        worksheet.cells(row,12).value = "W"
-        worksheet.cells(row,13).value = "D"
-        worksheet.cells(row,14).value = "Qty"
+        worksheet.cells(row,12).value = "Qty"
+        worksheet.cells(row,13).value = "W"
+        worksheet.cells(row,14).value = "D"
         worksheet.cells(row,15).value = "L(ft)"
         worksheet.cells(row,17).value = "BF"
 
@@ -479,9 +479,9 @@ module CB_TF
         row+=1
         top = row
         cl.each do |ct|
-          worksheet.cells(row,2).value = ct.w    #B
-          worksheet.cells(row,3).value = ct.d    #C
-          worksheet.cells(row,4).value = ct.count  #D
+          worksheet.cells(row,2).value = ct.count  #B
+          worksheet.cells(row,3).value = ct.w    #C
+          worksheet.cells(row,4).value = ct.d    #D
           if metric
             worksheet.cells(row,5).value = ct.ft/100  #E
           else
@@ -493,22 +493,22 @@ module CB_TF
           else
             worksheet.cells(row,7).formula = "=(B#{row} * C#{row} * D#{row} * E#{row})/12" #G
           end
-          worksheet.cells(row,9).formula = "=ROUND(D#{row} * $J$#{sparerow},0)"  #I
+          worksheet.cells(row,9).formula = "=ROUND(B#{row} * $J$#{sparerow},0)"  #I
           worksheet.cells(row,10).value = worksheet.cells(row,9).value  #J
-          worksheet.cells(row,12).value = worksheet.cells(row,2).value  #L
+          worksheet.cells(row,12).formula = "=B#{row}+J#{row}"      #L
           worksheet.cells(row,13).value = worksheet.cells(row,3).value  #M
-          worksheet.cells(row,14).formula = "=D#{row}+J#{row}"      #N
+          worksheet.cells(row,14).value = worksheet.cells(row,4).value  #N
           worksheet.cells(row,15).value = worksheet.cells(row,5).value  #O
           worksheet.cells(row,17).formula = "=(L#{row} * M#{row} * N#{row} * O#{row})/12"  #Q
           row+=1
         end
         unless top == row
           worksheet.cells(row,1).value = "Total"
-          worksheet.cells(row,4).formula = "=sum(D#{top}:D#{row-1})"
-          worksheet.cells(row,7).formula = "=sum(G#{top}:G#{row-1})"
+          worksheet.cells(row,2).formula = "=sum(B#{top}:B#{row-1})"  
+          worksheet.cells(row,7).formula = "=sum(G#{top}:G#{row-1})"  
           worksheet.cells(row,9).formula = "=sum(I#{top}:I#{row-1})"
           worksheet.cells(row,10).formula = "=sum(J#{top}:J#{row-1})"
-          worksheet.cells(row,14).formula = "=sum(N#{top}:N#{row-1})"
+          worksheet.cells(row,12).formula = "=sum(L#{top}:L#{row-1})"
           worksheet.cells(row,17).formula = "=sum(Q#{top}:Q#{row-1})"
           worksheet.rows(row).font.italic = true
         end
@@ -523,9 +523,9 @@ module CB_TF
           worksheet = workbook.Worksheets.add(after: worksheet) #create page 3
           worksheet.name = "Tally by Tag"
           worksheet.columns("a").columnwidth = 10   # blank
-          worksheet.columns("b").columnwidth = 5    # W
-          worksheet.columns("c").columnwidth = 5    # D
-          worksheet.columns("d").columnwidth = 5    # Qty
+          worksheet.columns("b").columnwidth = 5    # Qty
+          worksheet.columns("c").columnwidth = 5    # W
+          worksheet.columns("d").columnwidth = 5    # D
           worksheet.columns("e").columnwidth = 7    # L (ft)
           if metric
             worksheet.columns("e").NumberFormat = "0.0"
@@ -553,9 +553,9 @@ module CB_TF
           row+=1
           worksheet.cells(row,1).value = ts
           row+=2
-          worksheet.cells(row,2).value = "W"
-          worksheet.cells(row,3).value = "D"
-          worksheet.cells(row,4).value = "Qty"
+          worksheet.cells(row,2).value = "Qty"
+          worksheet.cells(row,3).value = "W"
+          worksheet.cells(row,4).value = "D"
           if metric
             worksheet.cells(row,5).value = "L(m)"
             worksheet.cells(row,7).value = "V(m3)"
@@ -576,9 +576,9 @@ module CB_TF
             row+=1
             top = row
             list.each do |ct|
-              worksheet.cells(row,2).value = ct.w    #B
-              worksheet.cells(row,3).value = ct.d    #C
-              worksheet.cells(row,4).value = ct.count  #D
+              worksheet.cells(row,2).value = ct.count  #B
+              worksheet.cells(row,3).value = ct.w    #C
+              worksheet.cells(row,4).value = ct.d    #D
               if metric
                 worksheet.cells(row,5).value = ct.ft/100  #E
               else
@@ -594,7 +594,7 @@ module CB_TF
             end
             unless top == row
               worksheet.cells(row,1).value = "Total"
-              worksheet.cells(row,4).formula = "=sum(D#{top}:D#{row-1})"
+              worksheet.cells(row,2).formula = "=sum(B#{top}:B#{row-1})"
               worksheet.cells(row,7).formula = "=sum(G#{top}:G#{row-1})"
               worksheet.rows(row).font.italic = true
             end
@@ -651,15 +651,15 @@ module CB_TF
         row+=2
 
         if metric
-          then tl_file << "W,D,Qty,L(m)\n"
-          else tl_file << "W,D,Qty,L(ft),BF\n"
+          then tl_file << "Qty,W,D,L(m)\n"
+          else tl_file << "Qty,W,D,L(ft),BF\n"
         end
         row+=1
         cl.each do |ct|
           if metric
-            tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "\n"
+            tl_file << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft << "\n"
           else
-            tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "," << "=(A#{row}*B#{row}*C#{row}*D#{row})/12" << "\n"
+            tl_file << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft << "," << "=(A#{row}*B#{row}*C#{row}*D#{row})/12" << "\n"
           end
           row+=1
         end
@@ -669,19 +669,19 @@ module CB_TF
           tl_file << "\n" << "Tally by Tag:\n"
           row+=1
           if metric
-            then tl_file << "W,D,Qty,L(m),V(m3)\n"
-            else tl_file << "W,D,Qty,L(ft),BF\n"
+            then tl_file << "Qty,W,D,L(m),V(m3)\n"
+            else tl_file << "Qty,W,D,L(ft),BF\n"
           end
           row+=1
           layer_lists.each_pair do |layer, list|
             tl_file << "\n" << "<Tag: #{layer.name}>\n"
             list.each do |ct|
               if metric
-                tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft/100 << "," << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
+                tl_file << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft/100 << "," << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
               else
                 bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
                 bf = ((bf*10).round)/10.0
-                tl_file << ct.w << "," << ct.d << "," << ct.count << "," << ct.ft << "," << bf.to_s << "\n"
+                tl_file << ct.count << "," << ct.w << "," << ct.d << "," << ct.ft << "," << bf.to_s << "\n"
               end
               row+=1
             end
@@ -746,19 +746,19 @@ module CB_TF
         row+=2
 
         if metric
-          then tl_file << "W\tD\tQty\tL(m)\n"
-          else tl_file << "W\tD\tQty\tL(ft)\tBF\n"
+          then tl_file << "Qty\tW\tD\tL(m)\n"
+          else tl_file << "Qty\tW\tD\tL(ft)\tBF\n"
         end
         row+=1
         total_bf = 0.0
         cl.each do |ct|
           if metric
-            tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\n"
+            tl_file << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\n"
           else
             bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
             total_bf += bf
             bf = ((bf*100).round)/100.0
-            tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
+            tl_file << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << bf.to_s << "\n"
           end
           row+=1
         end
@@ -769,19 +769,19 @@ module CB_TF
           tl_file << "\n" << "Tally by Tag:\n"
           row+=1
           if metric
-            then tl_file << "W\tD\tQty\tL(m)\tV(m3)\n"
-            else tl_file << "W\tD\tQty\tL(ft)\tBF\n"
+            then tl_file << "Qty\tW\tD\tL(m)\tV(m3)\n"
+            else tl_file << "Qty\tW\tD\tL(ft)\tBF\n"
           end
           row+=1
           layer_lists.each_pair do |layer, list|
             tl_file << "\n" << "  == Tag #{layer.name} ==\n"
             list.each do |ct|
               if metric
-                tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft/100 << "\t" << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
+                tl_file << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft/100 << "\t" << (ct.w * ct.d * ct.ft * ct.count)/10000 << "\n"
               else
                 bf = (ct.count * ct.w * ct.d * ct.ft)/12.0
                 bf = ((bf*10).round)/10.0
-                tl_file << ct.w << "\t" << ct.d << "\t" << ct.count << "\t" << ct.ft << "\t" << bf.to_s << "\n"
+                tl_file << ct.count << "\t" << ct.w << "\t" << ct.d << "\t" << ct.ft << "\t" << bf.to_s << "\n"
               end
               row+=1
             end

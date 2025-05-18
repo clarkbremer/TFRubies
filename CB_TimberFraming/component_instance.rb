@@ -298,6 +298,49 @@ module CB_TF
     end
   end  # lay down on red
 
+
+  def CB_TF.stand_up_on_blue(timber)
+    # fix the orientation so that its vertical parallel with blue
+    # do this in two steps so that timbers at an angle don't "roll"
+
+    red = Geom::Vector3d.new(1,0,0)
+    green = Geom::Vector3d.new(0,1,0)
+    blue = Geom::Vector3d.new(0,0,1)
+
+    # determine  the basic orientation
+    return nil if not (axis = longest_edge(timber))  #CI has no edges?
+    lev = Geom::Vector3d.new(axis.line[1])  # longest edge vector
+    lev.transform!(timber.transformation)
+    # puts ("stand up on blue lev: #{lev}. lev.z: #{lev.z}")
+
+    # determine it's got a 'rafter' configuration, and if so, rotate "up" first, then apply direction labels
+    # z == 0 means horizontal (girt)  z==1 means vertical (post)  Anything else is "rafter-like"
+    if lev.z.abs > 0.00001 and lev.z.abs < 0.999999 then
+      # puts("stand_up_on_blue: Rafter,  lev: #{lev}")
+      if lev.x.abs < 0.00001
+        # rafter in the green-blue plane
+        #print("green-blue rafter\n")
+        rotate_around_axis(timber, red, blue)
+      elsif lev.y.abs < 0.00001
+        #rafter in the red-blue plane
+        #print("red-blue rafter\n")
+        rotate_around_axis(timber, green, blue)
+      else
+        # valley rafter? don't bother with direction labels.
+        #print("valley rafter\n")
+        rotate_around_axis(timber, green, blue)
+        rotate_around_axis(timber, red, blue)
+      end
+    elsif lev.z.abs < 0.00001 # horizontal
+      # puts ("stand up on blue: girt, lev: #{lev}")
+      if lev.x.abs < 0.00001 # green plane
+        rotate_around_axis(timber, red, blue)
+      else
+        rotate_around_axis(timber, green, blue)
+      end
+    end
+  end  # stand_up_on_blue
+
   def CB_TF.get_dimensions(timber, min_len, metric, roundup, tdims)
     model = Sketchup.active_model
     grp = model.entities.add_group
