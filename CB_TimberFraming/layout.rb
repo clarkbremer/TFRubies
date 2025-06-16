@@ -12,6 +12,9 @@ module CB_TF
         project_name = get_project_name(model)
 
         message = <<~MSG
+        READ THIS:
+        On the next screen, you will choose a Layout TEMPLATE file.
+
         **** CAUTION - EXPERIMENTAL *****
 
         All *.skp files in the folder

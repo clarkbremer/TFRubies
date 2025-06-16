@@ -849,7 +849,7 @@ module CB_TF
       joint.explode
     end  
 
-    2.times do
+    3.times do
       victims = []
       shop_definition.entities.grep(Sketchup::Edge) do |edge|
         if (!has_attribute?(edge, "keep") && (edge.faces.count <= 1))
