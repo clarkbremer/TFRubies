@@ -203,19 +203,20 @@ module CB_TF
       sd.definition.entities.grep(Sketchup::Face) do |face|
         ctr = face.bounds.center
         ctr.transform!sd.transformation
-        if ctr.z > topmost
+        # there could be "ties" for xmost.  If there's a tie, and one is painted, choose that one. 
+        if ctr.z > topmost || (ctr.z == topmost && face.material) 
           topmost = ctr.z
           top = face
         end
-        if ctr.z < bottommost
+        if ctr.z < bottommost || (ctr.z == bottommost && face.material)
           bottommost = ctr.z
           bottom = face
         end
-        if ctr.y > backmost
+        if ctr.y > backmost || (ctr.y == backmost && face.material)
           backmost = ctr.y
           back = face
         end
-        if ctr.y < frontmost
+        if ctr.y < frontmost || (ctr.y == frontmost && face.material) 
           frontmost = ctr.y
           front = face
         end
@@ -224,8 +225,7 @@ module CB_TF
       if top.material # is the top painted with something?
         # draw mark on top edge of front face
         #print("marking top edge of face: "+front.to_s+"\n")
-        ctr = front.bounds.center
-        ctr.transform!sd.transformation
+        ctr = sd.bounds.center
         x = ctr.x
         y = frontmost - 0.01  # avoid z-fighting
         z = topmost
@@ -243,8 +243,7 @@ module CB_TF
       if bottom.material # is the bottom painted with something?
         # draw mark on top edge of front face
         #print("marking bottom edge of face: "+front.to_s+"\n")
-        ctr = front.bounds.center
-        ctr.transform!sd.transformation
+        ctr = sd.bounds.center
         x = ctr.x
         y = frontmost - 0.01  # avoid z-fighting
         z = bottommost
@@ -284,6 +283,20 @@ module CB_TF
       end
     end
     return false
+  end
+
+  def CB_TF.clone_cam(cam)
+    eye = cam.eye
+    target = cam.target
+    up = cam.up
+    if cam.perspective?
+      new_cam = Sketchup::Camera::new(eye, target, up, true, cam.fov)
+    else
+      h = cam.height
+      new_cam = Sketchup::Camera::new(eye, target, up, false )
+      new_cam.height = h
+    end
+    new_cam
   end
 
   ##########################################################
@@ -326,7 +339,7 @@ module CB_TF
     # save this stuff so we can restore the view after
     view = model.active_view
     cam = view.camera
-    save_cam = Sketchup::Camera.new(cam.eye, cam.target, cam.up, cam.perspective?, cam.fov)
+    save_cam = clone_cam(cam)
     save_sky = model.rendering_options["DrawHorizon"]
     save_background = model.rendering_options["BackgroundColor"]
     save_back_edges = model.rendering_options["DrawBackEdges"]
@@ -739,6 +752,12 @@ module CB_TF
       layers.remove(tf_shops_layer, true)
       view = model.active_view
       view.camera = save_cam
+
+      # This is to work around a SU bug when you save right after deleting a page
+      temp_page = pages.add("SU_BUG_WORKAROUND")
+      pages.selected_page = temp_page    
+      pages.erase(temp_page)
+
       model.rendering_options["DrawHorizon"] = save_sky
       model.rendering_options["BackgroundColor"] = save_background
       model.rendering_options["DrawBackEdges"] = save_back_edges
@@ -753,8 +772,6 @@ module CB_TF
     shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
 
     message = <<~MSG
-    **** CAUTION - EXPERIMENTAL *****
-
     Shop drawings will be created for ALL visible components in this 
     model.  Make sure only timbers are visible.  The naming rules are 
     the same as for the the timber list:

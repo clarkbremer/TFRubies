@@ -15,12 +15,11 @@ module CB_TF
         READ THIS:
         On the next screen, you will choose a Layout TEMPLATE file.
 
-        **** CAUTION - EXPERIMENTAL *****
-
         All *.skp files in the folder
         #{directory}
         will be added to the layout doc
         #{project_name}.layout 
+        in the current folder
 
         This can take a while.
        
