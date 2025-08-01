@@ -186,7 +186,7 @@ module CB_TF
     model.commit_operation
   end
 
-  # Place ref face triangle marks on shop drawings
+  # Place ref face triangle marks on shop drawings  (todo: this smells a lot like CB_TF.add_directional_attributes)
   def CB_TF.mark_reference_faces(shop_dwg, layer)
     for i in 0..3
       sd = shop_dwg[i]
@@ -203,20 +203,21 @@ module CB_TF
       sd.definition.entities.grep(Sketchup::Face) do |face|
         ctr = face.bounds.center
         ctr.transform!sd.transformation
-        # there could be "ties" for xmost.  If there's a tie, and one is painted, choose that one. 
-        if ctr.z > topmost || (ctr.z == topmost && face.material) 
+        # there could be "ties" for xmost.  
+        #   If there's a tie, choose largest.
+        if ctr.z > topmost || (ctr.z == topmost && face.area > top.area) 
           topmost = ctr.z
           top = face
         end
-        if ctr.z < bottommost || (ctr.z == bottommost && face.material)
+        if ctr.z < bottommost || (ctr.z == bottommost && face.area > bottom.area)
           bottommost = ctr.z
           bottom = face
         end
-        if ctr.y > backmost || (ctr.y == backmost && face.material)
+        if ctr.y > backmost || (ctr.y == backmost && face.area > back.area)
           backmost = ctr.y
           back = face
         end
-        if ctr.y < frontmost || (ctr.y == frontmost && face.material) 
+        if ctr.y < frontmost || (ctr.y == frontmost && face.area > front.area) 
           frontmost = ctr.y
           front = face
         end
