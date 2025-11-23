@@ -21,6 +21,8 @@ module CB_TF
         #{project_name}.layout 
         in the current folder
 
+        If you are on a mac, make sure you close all other Sketchup windows.
+
         This can take a while.
        
         Proceed?
@@ -55,7 +57,7 @@ module CB_TF
             next if filename == first_file_name
             status = Sketchup.open_file(filename, with_status: true)
             unless (status == Sketchup::Model::LOAD_STATUS_SUCCESS || status ==  Sketchup::Model::LOAD_STATUS_SUCCESS_MORE_RECENT)
-                UI.messagebox("Error load SU file #{filename}.  Aborting batch shops to layout.")
+                UI.messagebox("Error loading SU file #{filename}.  Aborting batch shops to layout.")
                 return
             end
             model = Sketchup.active_model
@@ -64,6 +66,10 @@ module CB_TF
                 count +=1
             elsif result == IDCANCEL
                 break
+            end
+            if Sketchup.platform == :platform_osx
+                puts "We're on MacOS, so closing the file..."
+                model.close
             end
         end
 

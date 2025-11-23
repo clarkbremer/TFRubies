@@ -6,7 +6,7 @@
 ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
 ##
-
+## todo:  Does `extend self` allow me to get rid of all the CB_TF.* ugliness?
 require 'sketchup.rb'
 require 'CB_TimberFraming/tf_peg_tool.rb'
 require 'CB_TimberFraming/tf_stretch_tool.rb'
