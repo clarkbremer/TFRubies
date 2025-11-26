@@ -847,6 +847,7 @@ module CB_TF
 
     if with_layout
       layout_doc = open_or_create_layout_doc(project_name, shop_drawings_path)
+      return unless layout_doc
     end
 
     count = 0
