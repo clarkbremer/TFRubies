@@ -42,7 +42,7 @@ module CB_TF
 
         count = 0
 
-        result = append_page_to_layout(model, doc, true)
+        result = append_page_to_layout(model, doc, batch: true)
         if result == true
             count +=1
         elsif result == IDCANCEL
@@ -53,7 +53,7 @@ module CB_TF
         first_file_name = first_file_name.gsub("\\", "/")
         filenames = Dir["#{directory}/*.skp"].sort_by{ |f| File.mtime(f) }
         filenames.each do |filename|
-            puts "filename: #{filename}"
+            # puts "filename: #{filename}"
             next if filename == first_file_name
             status = Sketchup.open_file(filename, with_status: true)
             unless (status == Sketchup::Model::LOAD_STATUS_SUCCESS || status ==  Sketchup::Model::LOAD_STATUS_SUCCESS_MORE_RECENT)
@@ -61,14 +61,14 @@ module CB_TF
                 return
             end
             model = Sketchup.active_model
-            result = append_page_to_layout(model, doc, true)
+            result = append_page_to_layout(model, doc, batch: true)
             if result == true
                 count +=1
             elsif result == IDCANCEL
                 break
             end
             if Sketchup.platform == :platform_osx
-                puts "We're on MacOS, so closing the file..."
+                # puts "We're on MacOS, so closing the file..."
                 model.close
             end
         end
@@ -176,8 +176,17 @@ module CB_TF
         return doc        
     end
     
-    def CB_TF.append_page_to_layout(model, doc, batch = false)
-        Sketchup.status_text = "Adding page #{model.title} to Layout Doc"
+    def CB_TF.append_page_to_layout(model, doc, batch: false, override_shop_file: nil)
+        if override_shop_file
+            page_name = File.basename(override_shop_file, ".skp")
+            page_path = override_shop_file
+        else
+            page_name = model.title
+            page_path = model.path
+        end
+        Sketchup.status_text = "Adding page #{page_name} to Layout Doc"
+        #puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Begin Adding page #{page_name} to Layout Doc"
+
         scenes = model.pages
         tf_3d_shops_scene = nil
         tf_shops_scene = nil
@@ -194,7 +203,7 @@ module CB_TF
 
         if tf_3d_shops_scene == nil || tf_shops_scene == nil
             if batch
-                puts "Skipping file #{model.title}.  It does not appear to be a shop drawing (special scenes not found):"
+                puts "Skipping page #{page_name}.  It does not appear to be a shop drawing (special scenes not found):"
                 puts "\ttf_3d_shops_scene: #{tf_3d_shops_scene}, tf_shops_scene: #{tf_shops_scene}"
             else
                 UI.messagebox("This does not look like a shop drawing model (missing special scenes)")
@@ -207,7 +216,7 @@ module CB_TF
             if ci.name == "shop_3d_timber"
                 qty = ci.get_attribute(JAD, "qty")
                 tsize = ci.get_attribute(JAD, "tsize")
-                puts ("send_shops_to_layout qty= #{qty}, size= #{tsize}")
+                puts ("send_shops_to_layout: Name= #{page_name}, qty= #{qty}, size= #{tsize}")
                 break
             end
         end
@@ -226,9 +235,9 @@ module CB_TF
 
         pages = doc.pages
         existing_page = nil
-        pages.each { |page| existing_page = page if page.name == model.title }
+        pages.each { |page| existing_page = page if page.name == page_name }
         if existing_page
-            result = UI.messagebox("Page '#{model.title}' already exists.  Overwrite?", MB_YESNOCANCEL )
+            result = UI.messagebox("Page '#{page_name}' already exists.  Overwrite?", MB_YESNOCANCEL )
             if result == IDYES
                 pages.remove(existing_page)
             else
@@ -243,9 +252,9 @@ module CB_TF
             end
         end
 
-        puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before  adding views"
-        page = pages.add(model.title)
-        # layer = doc.layers.add(model.title)
+        #puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - Before  adding views"
+        page = pages.add(page_name)
+        # layer = doc.layers.add(page_name)
         # layer.set_nonshared(page, Layout::Layer::UNSHARELAYERACTION_CLEAR)
         # page.set_layer_visibility(layer, true)
         pi = doc.page_info
@@ -256,7 +265,7 @@ module CB_TF
         vp3dw = Sketchup.read_default("TF", "vp3dw", 2.0).to_f
         vp3dh = Sketchup.read_default("TF", "vp3dh", 10.0).to_f
         view_bounds = Geom::Bounds2d.new(vp3dx, vp3dy, vp3dw, vp3dh)
-        viewport = Layout::SketchUpModel.new(model.path, view_bounds)
+        viewport = Layout::SketchUpModel.new(page_path, view_bounds)
         viewport.current_scene = tf_3d_shops_scene + 1
         doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
@@ -268,12 +277,12 @@ module CB_TF
         vp2dw = Sketchup.read_default("TF", "vp2dw", 13.0).to_f
         vp2dh = Sketchup.read_default("TF", "vp2dh", 8.0).to_f
         view_bounds = Geom::Bounds2d.new(vp2dx, vp2dy, vp2dw, vp2dh)
-        viewport = Layout::SketchUpModel.new(model.path, view_bounds)
+        viewport = Layout::SketchUpModel.new(page_path, view_bounds)
         viewport.current_scene = tf_shops_scene + 1
         doc.add_entity( viewport, default_layer, page )
         viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
         viewport.render if viewport.render_needed?
-        puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After  adding views"
+        #puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - After  adding views"
 
         # set qty if present and so configured
         show_qty_and_size = Sketchup.read_default("TF", "qty", 1).to_i
@@ -309,6 +318,7 @@ module CB_TF
             UI.messagebox("Error saving layout file (#{err}).  Is it open in Layout?")
             return
         end
+        #puts "#{DateTime.now.strftime("%H:%M:%S:%L")} - End Adding page #{page_name} to Layout Doc"
         return true
     end
 

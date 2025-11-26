@@ -5,6 +5,7 @@
 ##
 ##  load "C:/Users/clark/Google Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
 ##  load "G:/My Drive/TF/Sketchup/Rubies/CB_TimberFraming/CB_TimberFraming/tf.rb"
+##  cd "My Drive\TF\Sketchup\Rubies\CB_TimberFraming"
 ##
 ## todo:  Does `extend self` allow me to get rid of all the CB_TF.* ugliness?
 require 'sketchup.rb'
@@ -315,9 +316,7 @@ module CB_TF
   ##  TODO:
   ##  - Have we lost the ability for user to customize shop drawing styles?
 
-  def CB_TF.make_shop_drawings(original, batch = false)
-    su_ver = Sketchup.version.split(".")[0].to_i
-    puts "Sketchup Version: #{su_ver}"
+  def CB_TF.make_shop_drawings(original, batch: false, preview: false, add_to_layout: false, layout_doc: nil)
     tm = Time.now
     side_spacing = Sketchup.read_default("TF", "side_spacing", "30").to_i
 
@@ -573,7 +572,6 @@ module CB_TF
     end
 
     ## find and hide any joints and direction lables on the back side (facing away from the camera)
-    puts("hiding backside joinery.")
     for i in 0..3
       shop_instance = shop_dwg[i]
       shop_definition = shop_instance.definition
@@ -711,32 +709,41 @@ module CB_TF
     status = tf_3d_shops_page.update
     pages.selected_page = tf_shops_page
 
-    puts("showing file save dialog.  Drawing name: #{drawing_name}")
     begin
-      shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
-      if batch
-        sd_file = File.join(shop_drawings_path, drawing_name)
-        puts "batch mode, sd_file: #{sd_file}"
-        save_status = model.save_copy(sd_file)
-        unless save_status
-          UI.messagebox("Timber Framing: Error saving Shop Drawing: #{sd_file}")
-        end #batch
+      if (preview)
+        UI.messagebox("Preview of Shop Drawing.")
       else
-        sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)  
-        if sd_file
-          print("File name returned from save dialog: "+ sd_file + "\n")
-          while sd_file.index("\\")
-            sd_file["\\"]="/"
-          end
-          print("saving shop drawings as:"+sd_file + "\n")
+        shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
+        if batch
+          sd_file = File.join(shop_drawings_path, drawing_name)
+          puts "batch mode, sd_file: #{sd_file}"
           save_status = model.save_copy(sd_file)
-          unless save_status
-            UI.messagebox("Timber Framing: Error saving Shop Drawings.")
+          if save_status
+            if add_to_layout
+              result = append_page_to_layout(model, layout_doc, batch: true, override_shop_file: sd_file)
+            end
           else
-            Sketchup.write_default("TF", "shop_drawings_path", File.dirname(sd_file))
+            UI.messagebox("Timber Framing: Error saving Shop Drawing: #{sd_file}")
+          end 
+          #end batch
+        else
+          puts("showing file save dialog.  Drawing name: #{drawing_name}")
+          sd_file = UI.savepanel("Save Shop Drawings", shop_drawings_path, drawing_name)  
+          if sd_file
+            print("File name returned from save dialog: "+ sd_file + "\n")
+            while sd_file.index("\\")
+              sd_file["\\"]="/"
+            end
+            print("saving shop drawings as:"+sd_file + "\n")
+            save_status = model.save_copy(sd_file)
+            unless save_status
+              UI.messagebox("Timber Framing: Error saving Shop Drawings.")
+            else
+              Sketchup.write_default("TF", "shop_drawings_path", File.dirname(sd_file))
+            end
           end
-        end
-      end # not batch
+        end # not batch
+      end  #not preview
     rescue
       print("Timber Framing: Error creating shop drawings: " + $!.message + "\n")
       UI.messagebox("Timber Framing: Error creating shop drawings: " + $!.message)
@@ -769,8 +776,12 @@ module CB_TF
     end
   end  # make shop drawings
 
-  def CB_TF.batch_make_shop_drawings
+  def CB_TF.batch_make_shop_drawings(with_layout: false)
+    model = Sketchup.active_model
+    project_name = model.title
     shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
+
+      
 
     message = <<~MSG
     Shop drawings will be created for ALL visible components in this 
@@ -785,9 +796,7 @@ module CB_TF
 
     Shop drawings will be saved to the folder you are about to select.
     * Any existing shop drawings with the same name will be overwitten!
-    
-    This can take a while.
-   
+    #{"\nThis can take a while.\n" unless with_layout}
     Proceed?
     MSG
     
@@ -799,8 +808,21 @@ module CB_TF
     return unless shop_drawings_path
     Sketchup.write_default("TF", "shop_drawings_path", shop_drawings_path)
 
+    if with_layout
+      layout_message = <<~LAYOUT_MSG
+      On the next screen, you will choose a Layout TEMPLATE file.
+      The layout doc: "#{project_name}.layout" 
+      will be created using that template.
+
+      This will take a while - go get coffee.
+
+      LAYOUT_MSG
+
+      result = UI.messagebox(layout_message, MB_YESNO)
+      return unless result == IDYES
+    end
+
     Sketchup.status_text = "Selecting Timbers for Batch Shop Drawings"
-    model = Sketchup.active_model
     min_extra_timber_length = Sketchup.read_default("TF", "min_extra_timber_length", "24").to_i
     s = Sketchup.read_default("TF", "metric", 0).to_i
     if s == 1
@@ -821,17 +843,23 @@ module CB_TF
 
     cl, scantlings, timbers = collect_timber_lists(min_extra_timber_length, metric, roundup)
 
+    layout_doc = nil
+
+    if with_layout
+      layout_doc = open_or_create_layout_doc(project_name, shop_drawings_path)
+    end
+
     count = 0
     timbers.each do |timber|
       Sketchup.status_text = "Making shop drawing for #{timber.name}"
       t = model.entities.grep(Sketchup::ComponentInstance).find {|ci| ci.persistent_id == timber.id}
-      make_shop_drawings(t, true)
+      make_shop_drawings(t, batch: true, add_to_layout: with_layout, layout_doc: layout_doc)
       count += 1
     end
     scantlings.each do |timber|
       Sketchup.status_text = "Making shop drawing for #{timber.name}"
       t = model.entities.grep(Sketchup::ComponentInstance).find {|ci| ci.persistent_id == timber.id}
-      make_shop_drawings(t, true)
+      make_shop_drawings(t, batch: true, add_to_layout: with_layout, layout_doc: layout_doc)
       count += 1
     end
     SKETCHUP_CONSOLE.hide unless leave_console_open
@@ -1125,6 +1153,8 @@ unless file_loaded?("tf.rb")
       menu.add_separator
       tenon_menu_item = menu.add_item("Create Joint") {CB_TF.create_joint}
       menu.set_validation_proc(tenon_menu_item) {CB_TF.tenon_valid_proc(sel)}
+      shop_preview_menu_item = menu.add_item("Preview Shop Drawings") {CB_TF.make_shop_drawings(sel, preview: true)}
+      menu.set_validation_proc(shop_preview_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
       shop_dwg_menu_item = menu.add_item("Make Shop Drawings") {CB_TF.make_shop_drawings(sel)}
       menu.set_validation_proc(shop_dwg_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
       # auto_dimensions_menu_item = menu.add_item("Timber Framing Add Dimensions") {CB_TF.auto_dimensions(sel)} ## Experimental
@@ -1153,9 +1183,10 @@ unless file_loaded?("tf.rb")
   tf_menu.add_item("Show Pegs") {CB_TF.show_pegs}
   tf_menu.add_item("Peg Report") {CB_TF.peg_report}
   tf_menu.add_item("DoD Report") {CB_TF.dod_report}
-  tf_menu.add_item("Send Shops to Layout") {CB_TF.send_shops_to_layout}
+  tf_menu.add_item("Make Shop Drawings (Batch)") {CB_TF.batch_make_shop_drawings(with_layout: true)}
+  tf_menu.add_item("Make Shop Drawings (Batch, SKP files only)") {CB_TF.batch_make_shop_drawings(with_layout: false)}
+  tf_menu.add_item("Send Shops to Layout (Single)") {CB_TF.send_shops_to_layout}
   tf_menu.add_item("Send Shops to Layout (Batch)") {CB_TF.batch_shops_to_layout}
-  tf_menu.add_item("Make Shop Drawings (Batch)") {CB_TF.batch_make_shop_drawings}
   peg_tool_item = tf_menu.add_item("Peg Tool"){Sketchup.active_model.select_tool(CB_TF::TFPegTool.new)}
   tf_menu.set_validation_proc(peg_tool_item) {CB_TF.peg_tool_valid_proc}
   stretch_tool_item = tf_menu.add_item("Stretch Tool"){Sketchup.active_model.select_tool(CB_TF::TFStretchTool.new)}
