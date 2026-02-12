@@ -127,8 +127,8 @@ module CB_TF
         return tf_3d_shops_scene != nil && tf_shops_scene != nil
     end
 
-    def CB_TF.open_or_create_layout_doc(project_name, path)
-        layout_file_name = File.join(path, "#{project_name}.layout")
+    def CB_TF.open_or_create_layout_doc(project_name, sd_path, model_path = "")
+        layout_file_name = File.join(sd_path, "#{project_name}.layout")
         puts "layout_file_name: #{layout_file_name}"
         if layout_file_name && File.exist?(layout_file_name)
             Sketchup.status_text = "Opening the Layout Doc (this can take a while)..."
@@ -143,7 +143,7 @@ module CB_TF
             end
         else
             Sketchup.status_text = "Choose a Layout Template"
-            puts "doc not found, creating new"
+            puts "existing LO doc not found, creating new"
             layout_template_path =  Sketchup.read_default("TF", "layout_template_path", "")
             template_file_name = UI.openpanel("Choose a Layout Template", layout_template_path, "Layout|*.layout||")
             puts "template_file_name: #{template_file_name}"
@@ -157,13 +157,21 @@ module CB_TF
             default_layer = nil
             layers = doc.layers
             layers.each { |layer| default_layer = layer if layer.name == "Default" }
-    
-            anchor = Geom::Point2d.new(pi.width / 2, pi.height / 2)
-            text = Layout::FormattedText.new("#{project_name} Shop Drawings", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
-            style = text.style
-            style.font_size = 36.0
-            text.style = style
-            doc.add_entity(text, default_layer, page)
+            if model_path == ""
+                anchor = Geom::Point2d.new(pi.width / 2, pi.height / 2)
+                text = Layout::FormattedText.new("#{project_name} Shop Drawings", anchor, Layout::FormattedText::ANCHOR_TYPE_CENTER_CENTER)
+                style = text.style
+                style.font_size = 36.0
+                text.style = style
+                doc.add_entity(text, default_layer, page)
+            else    
+                puts "adding model to title page: #{model_path}"
+                view_bounds = Geom::Bounds2d.new(pi.width / 4, pi.height / 4, pi.width / 2, pi.height / 2)
+                viewport = Layout::SketchUpModel.new(model_path, view_bounds)
+                doc.add_entity( viewport, default_layer, page )
+                viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
+                viewport.render if viewport.render_needed?
+            end
             doc.save(layout_file_name)
             layout_template_path = File.dirname(template_file_name)
             while layout_template_path.index("\\")

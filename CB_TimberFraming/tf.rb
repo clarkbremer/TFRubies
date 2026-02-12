@@ -846,7 +846,7 @@ module CB_TF
     layout_doc = nil
 
     if with_layout
-      layout_doc = open_or_create_layout_doc(project_name, shop_drawings_path)
+      layout_doc = open_or_create_layout_doc(project_name, shop_drawings_path, model.path)
       return unless layout_doc
     end
 
