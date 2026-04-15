@@ -169,7 +169,7 @@ module CB_TF
                 view_bounds = Geom::Bounds2d.new(pi.width / 4, pi.height / 4, pi.width / 2, pi.height / 2)
                 viewport = Layout::SketchUpModel.new(model_path, view_bounds)
                 doc.add_entity( viewport, default_layer, page )
-                viewport.render_mode= Layout::SketchUpModel::HYBRID_RENDER
+                viewport.render_mode= Layout::SketchUpModel::RASTER_RENDER
                 viewport.render if viewport.render_needed?
             end
             doc.save(layout_file_name)
