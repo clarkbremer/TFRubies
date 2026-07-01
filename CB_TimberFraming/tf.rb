@@ -343,6 +343,8 @@ module CB_TF
     save_sky = model.rendering_options["DrawHorizon"]
     save_background = model.rendering_options["BackgroundColor"]
     save_back_edges = model.rendering_options["DrawBackEdges"]
+    pages = model.pages
+    save_page = pages.selected_page # will be nil if no pages
 
     original_path = model.path
 
@@ -761,10 +763,7 @@ module CB_TF
       view = model.active_view
       view.camera = save_cam
 
-      # This is to work around a SU bug when you save right after deleting a page
-      temp_page = pages.add("SU_BUG_WORKAROUND")
-      pages.selected_page = temp_page    
-      pages.erase(temp_page)
+      pages.selected_page = save_page if save_page
 
       model.rendering_options["DrawHorizon"] = save_sky
       model.rendering_options["BackgroundColor"] = save_background
@@ -780,8 +779,6 @@ module CB_TF
     model = Sketchup.active_model
     project_name = model.title
     shop_drawings_path = Sketchup.read_default("TF", "shop_drawings_path", "")
-
-      
 
     message = <<~MSG
     Shop drawings will be created for ALL visible components in this 
@@ -1034,6 +1031,27 @@ module CB_TF
     bfs.each {|base| base.erase! if base.valid?}
   end
 
+
+  def CB_TF.intersect_timber(sel)
+        model = Sketchup.active_model
+        hits = []
+        model.active_entities.grep(Sketchup::ComponentInstance) do |timber|  # narrow it down first
+            next if timber == sel  # not this
+            intersection = sel.bounds.intersect(timber.bounds)
+            unless intersection.empty?
+              hits << timber
+            end
+        end
+
+        model.start_operation("CB_TF TRIM", true)
+        hits.each do |timber|
+            ents = sel.definition.entities
+            ents.intersect_with(false, sel.transformation, ents, sel.transformation, false, timber )
+        end
+        model.commit_operation
+    end
+
+
   def CB_TF.unroll_joint
     return nil unless sel_is_tenon
     sel = selected_component
@@ -1166,6 +1184,8 @@ unless file_loaded?("tf.rb")
       end
       set_dod_menu_item = menu.add_item("Set DoD (currently " + dod.to_s + ")") {CB_TF.set_dod(sel)}
       menu.set_validation_proc(set_dod_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}  # same rules as shop dwg
+      intersect_menu_item = menu.add_item("Interect Timber with Model") {CB_TF.intersect_timber(sel)}
+      menu.set_validation_proc(intersect_menu_item) {CB_TF.shop_dwg_valid_proc(sel)}
     end
 
     if CB_TF.selected_face

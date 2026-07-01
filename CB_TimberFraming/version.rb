@@ -1,5 +1,5 @@
 module CB_TF
   base_name = File.dirname(__FILE__).split("/").last
-  const_set("#{base_name}_VERSION", "3.1.11")
-  const_set("#{base_name}_DATE", "4/15/2026")
+  const_set("#{base_name}_VERSION", "3.1.12")
+  const_set("#{base_name}_DATE", "7/1/2026")
 end
